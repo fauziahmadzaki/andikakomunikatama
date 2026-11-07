@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-import { DashboardSidebar } from "./parts/sidebar";
-import { DashboardTopbar } from "./parts/topbar";
+import { Toaster } from "@/components/ui/sonner";
+import { DashboardSidebar } from "./DashboardSidebar";
+import { DashboardTopbar } from "./DashboardTopbar";
 import { getPageTitle } from "./data/navigation";
 import { cn } from "@/lib/utils";
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   return (
     <div className="min-h-svh bg-muted/40">
@@ -41,6 +39,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         />
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>
+
+      <Toaster position="top-right" />
     </div>
   );
 }

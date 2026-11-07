@@ -21,8 +21,12 @@ The current scope covers:
 - Login with local/hardcoded credentials.
 - Role-based users: `admin`, `teknisi`, `cs`.
 - Internal dashboard shell with sidebar, expandable menu groups, and topbar.
-- Dashboard content is intentionally empty for now; route placeholders exist
-  under `/dashboard/*`.
+- Frontend-only prototype for PRD 01–03:
+  - Foundation: company, branches, settings, sequences, audit, security.
+  - Auth/RBAC: users, roles, access review, password reset, 2FA mock.
+  - Customers: list, wizard, detail, import, segments.
+- State is mocked in Zustand and persisted in `localStorage`.
+- Dashboard content outside PRD 01–03 is still placeholder.
 
 The product language for UI copy is Indonesian. Code, comments, commits, and
 documentation are in English.
@@ -63,42 +67,53 @@ documentation are in English.
 
 Do not use atomic design (`atoms/`, `molecules/`, `organisms/`).
 
-A complex component gets its own folder:
+Feature folders use this top-level layout:
 
 ```txt
-component-name/
-  index.ts              # re-export ONLY
-  component-name.tsx    # composes the parts
-  parts/                # subcomponents, short filenames
-    sidebar.tsx
-    topbar.tsx
-    nav-link.tsx
-  data/                 # types/interfaces, hardcoded data, component functions
-    navigation.ts
+src/features/<feature>/
+  components/     # PascalCase component files
+    UsersPage.tsx
+    UsersTable.tsx
+    UsersDialog.tsx
+  hooks/          # camelCase hooks
+    useUsersPage.ts
+    useUsersDialog.ts
+  data/           # types, seeds, schemas
+    users.ts
+    login-schema.ts
+  store/          # Zustand stores
+    auth-store.ts
 ```
 
 Rules:
 
-- `index.ts` must only re-export. Never put state, composition, `"use client"`,
-  or side effects in it.
-- Filenames inside `parts/` are short because the folder provides context
-  (`sidebar.tsx`, not `dashboard-sidebar.tsx`).
-- Put types/interfaces, hardcoded data (menu arrays, stats, tables), and
-  component-related functions in `data/`.
-- Helpers such as `findActiveHref`, `getPageTitle`, and `findLocalUser` belong
-  in `data/`.
-- Simple components may stay in a single file. Do not over-split.
-- Pages compose components only. Do not put long data arrays or large UI logic
-  directly in page files.
+- Component files outside `src/components/ui` and `src/app` use **PascalCase**
+  (`UsersTable.tsx`, `CustomerWizard.tsx`).
+- Hooks use **camelCase** (`useUsersPage.ts`, `useUsersDialog.ts`).
+- Put page/business logic in hooks. Components should focus on rendering and
+  receive state/actions from hooks.
+- `data/`, `hooks/`, and `store/` live at the top level of the feature, not
+  inside individual component folders.
+- Do not create `parts/` by default. Prefer sibling PascalCase components when
+  a feature has multiple subcomponents. Keep `parts/` only when a component is
+  genuinely complex enough to justify it.
+- `index.ts` is optional. If present, it must only re-export. Never put state,
+  composition, `"use client"`, or side effects in it.
+- Pages in `src/app` compose components only. Do not put large data arrays or
+  UI logic directly in page files.
 
 ## File Placement
 
-- Layout components (sidebar, topbar, shell) →
-  `src/components/layouts/<layout>/`.
-- Feature components →
-  `src/features/<feature>/components/<component>/`.
-- Feature data and component functions → `src/features/<feature>/data/`.
-- shadcn/UI primitives → `src/components/ui/`.
+- Layout components (shell, sidebar, topbar) →
+  `src/components/layouts/<layout>/` with PascalCase files.
+- Feature components → `src/features/<feature>/components/` with PascalCase
+  files.
+- Feature hooks → `src/features/<feature>/hooks/` with camelCase files.
+- Feature data and schemas → `src/features/<feature>/data/`.
+- Feature stores → `src/features/<feature>/store/`.
+- Shared components → `src/components/shared/` with PascalCase files.
+- shadcn/UI primitives → `src/components/ui/` (lowercase, keep shadcn naming).
+- Providers → `src/components/providers/` with PascalCase files.
 - Global helpers (for example `cn`) → `src/lib/`.
 - Route pages → `src/app/`.
 - Use the `@/` path alias for cross-folder imports.
@@ -117,19 +132,72 @@ src/
   components/
     layouts/dashboard/
       index.ts
-      dashboard-shell.tsx
-      parts/
+      DashboardShell.tsx
+      DashboardSidebar.tsx
+      DashboardTopbar.tsx
+      BrandMark.tsx
+      SidebarNavLink.tsx
+      SidebarNavGroup.tsx
       data/navigation.ts
+    shared/
+      AccessDenied.tsx
+      ActionIconButton.tsx
+      ConfirmationDialog.tsx
+      DataTable.tsx
+      DataTablePagination.tsx
+      PageHeader.tsx
+      SelectField.tsx
+      StatusBadge.tsx
+    providers/
+      PrototypeProvider.tsx
     ui/                        # shadcn primitives
   features/
     auth/
-      components/login-form/
-        index.ts
-        login-form.tsx
-        data/schema.ts
-      data/users.ts
+      components/              # PascalCase
+      hooks/                   # useX.ts
+      data/
+      store/
+    customers/
+      components/
+      hooks/
+      data/
+      store/
+    foundation/
+      components/
+      hooks/
+      data/
+      store/
+    dashboard/
+      components/
+      hooks/
   lib/utils.ts
 ```
+
+## Testing
+
+Agent verification is limited to linting:
+
+```bash
+npm run lint
+```
+
+Do **not** run `npm run build`, `npx tsc --noEmit`, smoke tests, browser
+automation, or other runtime checks. The user handles manual testing.
+
+## UI Component Rules
+
+- Use the shadcn `Select` (`src/components/ui/select.tsx`) for dropdowns. Do not
+  create or use a native `<select>` wrapper.
+- Use the shadcn `Pagination` primitives. Wrap them in `DataTablePagination`
+  for client-side table pagination.
+- Use `DataTable` for reusable tables. Define columns with `key`, `header`, and
+  an optional `cell` renderer. Use `getRowKey` for the row key.
+- Table actions must use icon-only `ActionIconButton` with tooltip. Do not use
+  text-only action buttons.
+- Every icon-only button must have an accessible `aria-label` and a tooltip.
+- Destructive table actions use `tone="destructive"`.
+- Use `ConfirmationDialog` from shared components for confirmation flows.
+- Use `SelectField` for standard select inputs with an accessible label.
 
 ## Design Rules
 
@@ -150,16 +218,24 @@ src/
 
 ## Do
 
-- Put hardcoded data and component functions in `data/`.
-- Split complex components into clear `parts/`.
+- Put page and business logic in `hooks/` using camelCase filenames.
+- Name component files outside `components/ui` and `app` with PascalCase.
+- Put hardcoded data, types, and schemas in the feature-level `data/`.
+- Use `SelectField` (shadcn Select) for dropdowns.
+- Use `DataTable` for tables and `DataTablePagination` for pagination.
+- Use `ActionIconButton` with tooltip for table actions.
+- Use `ConfirmationDialog` for confirmation flows.
 - Use `text-sm text-muted-foreground` for metadata.
-- Add `aria-label` or `title` to icon-only buttons.
 - Keep imports ordered and use the `@/` alias.
-- Run `npx tsc --noEmit` after structural changes.
+- Run `npm run lint` after changes.
 
 ## Don't
 
 - Don't create `atoms/`, `molecules/`, or `organisms/` folders.
+- Don't create `parts/` by default; prefer sibling PascalCase components.
+- Don't use native `<select>` or a native select wrapper.
+- Don't put page logic directly inside components.
+- Don't use text-only action buttons inside tables.
 - Don't put data, state, composition, or `"use client"` in `index.ts`.
 - Don't hardcode colors or duplicate shadcn primitives.
 - Don't use red for non-destructive actions.
@@ -167,13 +243,15 @@ src/
   visual reason.
 - Don't put passwords or secrets in client code for production. Current local
   auth is development-only.
+- Don't run build, typecheck, smoke tests, or browser automation; only lint.
 - Don't modify the `nextjs-agent-rules` block.
 
 ## Commands
 
 ```bash
 npm run dev          # start development server
-npm run build        # production build
-npm run lint         # eslint
-npx tsc --noEmit     # type check
+npm run lint         # eslint (the only verification agents should run)
 ```
+
+`npm run build` and `npx tsc --noEmit` are available for humans but must not be
+run by agents as verification.

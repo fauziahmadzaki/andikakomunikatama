@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from "lucide-react";
 
-import { SidebarNavLink } from "./nav-link";
-import type { NavGroup } from "../data/navigation";
+import { SidebarNavLink } from "./SidebarNavLink";
+import type { NavGroup } from "./data/navigation";
 import { cn } from "@/lib/utils";
 
 export function SidebarNavGroup({

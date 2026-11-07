@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { dashboardHref } from "../data/navigation";
+import { dashboardHref } from "./data/navigation";
 import { cn } from "@/lib/utils";
 
 export function BrandMark({
@@ -17,7 +17,6 @@ export function BrandMark({
     <Link
       href={dashboardHref}
       onClick={onNavigate}
-      title="MuraNET"
       className={cn("flex items-center gap-2", className)}
     >
       <Image
