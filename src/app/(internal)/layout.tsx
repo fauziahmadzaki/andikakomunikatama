@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { DashboardShell } from "@/components/layouts/dashboard";
+import { SessionGuard } from "@/features/auth/components/SessionGuard";
 
 export default function InternalLayout({ children }: { children: ReactNode }) {
-  return <DashboardShell>{children}</DashboardShell>;
+  return <SessionGuard>{children}</SessionGuard>;
 }

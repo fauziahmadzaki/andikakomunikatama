@@ -9,6 +9,7 @@ import {
 export type NavItem = {
   title: string;
   href: string;
+  permission?: string;
 };
 
 export type NavGroup = {
@@ -24,34 +25,119 @@ export const navigationGroups: NavGroup[] = [
     title: "Pelanggan",
     icon: UsersIcon,
     items: [
-      { title: "Data pelanggan", href: "/dashboard/pelanggan" },
-      { title: "Pendaftaran", href: "/dashboard/pelanggan/pendaftaran" },
-      { title: "Tagihan", href: "/dashboard/pelanggan/tagihan" },
+      {
+        title: "Data pelanggan",
+        href: "/dashboard/pelanggan",
+        permission: "customer.read",
+      },
+      {
+        title: "Pendaftaran",
+        href: "/dashboard/pelanggan/pendaftaran",
+        permission: "customer.create",
+      },
+      {
+        title: "Impor pelanggan",
+        href: "/dashboard/pelanggan/impor",
+        permission: "customer.import",
+      },
+      {
+        title: "Segmen",
+        href: "/dashboard/pelanggan/segmen",
+        permission: "customer.segment.manage",
+      },
+      {
+        title: "Tagihan",
+        href: "/dashboard/pelanggan/tagihan",
+        permission: "invoice.read",
+      },
     ],
   },
   {
     title: "Jaringan",
     icon: WifiIcon,
     items: [
-      { title: "Monitoring", href: "/dashboard/jaringan" },
-      { title: "Perangkat", href: "/dashboard/jaringan/perangkat" },
-      { title: "Gangguan", href: "/dashboard/jaringan/gangguan" },
+      {
+        title: "Monitoring",
+        href: "/dashboard/jaringan",
+        permission: "network.read",
+      },
+      {
+        title: "Perangkat",
+        href: "/dashboard/jaringan/perangkat",
+        permission: "network.read",
+      },
+      {
+        title: "Gangguan",
+        href: "/dashboard/jaringan/gangguan",
+        permission: "ticket.read",
+      },
     ],
   },
   {
     title: "Layanan",
     icon: TicketIcon,
     items: [
-      { title: "Tiket", href: "/dashboard/tiket" },
-      { title: "Jadwal teknisi", href: "/dashboard/teknisi" },
+      {
+        title: "Tiket",
+        href: "/dashboard/tiket",
+        permission: "ticket.read",
+      },
+      {
+        title: "Jadwal teknisi",
+        href: "/dashboard/teknisi",
+        permission: "ticket.read",
+      },
     ],
   },
   {
     title: "Pengaturan",
     icon: SettingsIcon,
     items: [
-      { title: "Pengguna", href: "/dashboard/pengaturan/pengguna" },
-      { title: "Role & akses", href: "/dashboard/pengaturan/role" },
+      {
+        title: "Perusahaan",
+        href: "/dashboard/pengaturan/perusahaan",
+        permission: "company.read",
+      },
+      {
+        title: "Cabang",
+        href: "/dashboard/pengaturan/cabang",
+        permission: "branch.manage",
+      },
+      {
+        title: "Pengguna",
+        href: "/dashboard/pengaturan/pengguna",
+        permission: "user.read",
+      },
+      {
+        title: "Role & akses",
+        href: "/dashboard/pengaturan/role",
+        permission: "role.manage",
+      },
+      {
+        title: "Access review",
+        href: "/dashboard/pengaturan/akses",
+        permission: "access.review",
+      },
+      {
+        title: "Audit log",
+        href: "/dashboard/pengaturan/audit",
+        permission: "audit.read",
+      },
+      {
+        title: "Pengaturan sistem",
+        href: "/dashboard/pengaturan/sistem",
+        permission: "setting.read",
+      },
+      {
+        title: "Penomoran",
+        href: "/dashboard/pengaturan/penomoran",
+        permission: "sequence.read",
+      },
+      {
+        title: "Keamanan",
+        href: "/dashboard/pengaturan/keamanan",
+        permission: "security.manage",
+      },
     ],
   },
 ];
@@ -82,4 +168,3 @@ export function getPageTitle(pathname: string) {
     "Dashboard"
   );
 }
-
