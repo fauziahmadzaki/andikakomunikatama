@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
-import { LoginForm } from "@/features/auth/components/login-form";
+import { LoginForm } from "@/features/auth/components/LoginForm";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {

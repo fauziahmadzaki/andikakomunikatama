@@ -1,8 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,40 +10,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { findLocalUser } from "@/features/auth/data/users";
-import { loginSchema, type LoginValues } from "./data/schema";
+import { useLoginForm } from "@/features/auth/hooks/useLoginForm";
 
 export function LoginForm() {
-  const router = useRouter();
-
-  const {
-    register,
-    handleSubmit,
-    setError,
-    clearErrors,
-    formState: { errors },
-  } = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      identifier: "",
-      password: "",
-    },
-  });
-
-  function onSubmit(values: LoginValues) {
-    clearErrors("root");
-
-    const user = findLocalUser(values.identifier, values.password);
-
-    if (!user) {
-      setError("root.server", {
-        message: "Email/ID atau kata sandi salah.",
-      });
-      return;
-    }
-
-    router.replace("/dashboard");
-  }
+  const { register, handleSubmit, errors, onSubmit } = useLoginForm();
 
   return (
     <form
@@ -73,7 +41,15 @@ export function LoginForm() {
         </Field>
 
         <Field data-invalid={Boolean(errors.password)}>
-          <FieldLabel htmlFor="password">Kata sandi</FieldLabel>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor="password">Kata sandi</FieldLabel>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Lupa kata sandi?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
@@ -96,6 +72,12 @@ export function LoginForm() {
       <Button type="submit" className="w-full">
         Masuk
       </Button>
+
+      <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
+        Demo: <span className="font-medium">admin / admin123</span> ·{" "}
+        <span className="font-medium">cs / cs123456</span> ·{" "}
+        <span className="font-medium">teknisi / teknisi123</span>
+      </p>
     </form>
   );
 }
