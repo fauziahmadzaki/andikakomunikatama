@@ -1,26 +1,303 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+ * MURANET Design System
+ * Brand palette extracted from the MURANET logo.
+ *   Blue : the satellite dish + "NET" wordmark
+ *   Red  : the signal arcs + "MURA" wordmark
+ * ------------------------------------------------------------------------- */
+
+@theme {
+  /* Brand palette — MURANET Blue */
+  --color-brand-blue-50: oklch(0.9705 0.0142 254.6);
+  --color-brand-blue-100: oklch(0.9319 0.0316 255.59);
+  --color-brand-blue-200: oklch(0.8823 0.0571 254.13);
+  --color-brand-blue-300: oklch(0.8091 0.0956 251.81);
+  --color-brand-blue-400: oklch(0.7137 0.1434 254.62);
+  --color-brand-blue-500: oklch(0.628 0.1866 256.7);
+  --color-brand-blue-600: oklch(0.5439 0.1981 259.22);
+  --color-brand-blue-700: oklch(0.4748 0.175 259.66);
+  --color-brand-blue-800: oklch(0.4132 0.1469 259.42);
+  --color-brand-blue-900: oklch(0.3648 0.122 258.83);
+  --color-brand-blue-950: oklch(0.2736 0.0832 257.52);
+
+  /* Brand palette — MURANET Red */
+  --color-brand-red-50: oklch(0.9691 0.0151 17.42);
+  --color-brand-red-100: oklch(0.9322 0.0343 17.78);
+  --color-brand-red-200: oklch(0.8774 0.0653 17.3);
+  --color-brand-red-300: oklch(0.7982 0.116 18.65);
+  --color-brand-red-400: oklch(0.6936 0.1872 21.86);
+  --color-brand-red-500: oklch(0.6141 0.224 25.47);
+  --color-brand-red-600: oklch(0.5674 0.2165 25.9);
+  --color-brand-red-700: oklch(0.4988 0.1914 25.73);
+  --color-brand-red-800: oklch(0.4369 0.1622 24.48);
+  --color-brand-red-900: oklch(0.3879 0.135 22.5);
+  --color-brand-red-950: oklch(0.2533 0.0925 23.93);
+
+  /* Brand palette — Neutral (cool slate, tuned toward the logo blue) */
+  --color-brand-neutral-50: oklch(0.9842 0.0034 247.86);
+  --color-brand-neutral-100: oklch(0.9683 0.0069 247.9);
+  --color-brand-neutral-200: oklch(0.9288 0.0126 255.51);
+  --color-brand-neutral-300: oklch(0.869 0.0198 252.89);
+  --color-brand-neutral-400: oklch(0.7107 0.0351 256.79);
+  --color-brand-neutral-500: oklch(0.5544 0.0407 257.42);
+  --color-brand-neutral-600: oklch(0.4455 0.0374 257.28);
+  --color-brand-neutral-700: oklch(0.3717 0.0392 257.29);
+  --color-brand-neutral-800: oklch(0.2795 0.0368 260.03);
+  --color-brand-neutral-900: oklch(0.2077 0.0398 265.75);
+  --color-brand-neutral-950: oklch(0.1288 0.0406 264.7);
+
+  /* Brand aliases */
+  --color-brand: var(--color-brand-blue-600);
+  --color-brand-accent: var(--color-brand-red-600);
+
+  /* Typography — Arial is the primary typeface */
+  --font-sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;
+  --font-heading: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --tracking-brand: -0.015em;
+
+  /* Display type scale (use: text-display, text-title, text-subtitle) */
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 700;
+  --text-title: 2.25rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.02em;
+  --text-title--font-weight: 700;
+  --text-subtitle: 1.25rem;
+  --text-subtitle--line-height: 1.4;
+  --text-subtitle--letter-spacing: -0.01em;
+  --text-subtitle--font-weight: 600;
+
+  /* Brand elevation + motion */
+  --shadow-brand-sm: 0 2px 8px -2px oklch(0.5439 0.1981 259.22 / 0.24);
+  --shadow-brand: 0 12px 32px -12px oklch(0.5439 0.1981 259.22 / 0.35);
+  --ease-brand: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.75rem;
+
+  --background: var(--color-brand-neutral-50);
+  --foreground: var(--color-brand-neutral-900);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--color-brand-neutral-900);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--color-brand-neutral-900);
+
+  /* Primary = MURANET Blue */
+  --primary: var(--color-brand-blue-600);
+  --primary-foreground: oklch(1 0 0);
+
+  /* Secondary = soft brand-blue surface (low emphasis, still on-brand) */
+  --secondary: var(--color-brand-blue-100);
+  --secondary-foreground: var(--color-brand-blue-800);
+
+  --muted: var(--color-brand-neutral-100);
+  --muted-foreground: var(--color-brand-neutral-500);
+
+  /* Accent = soft brand-blue surface for hover/active states */
+  --accent: var(--color-brand-blue-50);
+  --accent-foreground: var(--color-brand-blue-700);
+
+  --destructive: var(--color-brand-red-600);
+
+  --border: var(--color-brand-neutral-200);
+  --input: var(--color-brand-neutral-200);
+  --ring: var(--color-brand-blue-500);
+
+  --chart-1: var(--color-brand-blue-600);
+  --chart-2: var(--color-brand-red-500);
+  --chart-3: var(--color-brand-blue-400);
+  --chart-4: var(--color-brand-red-300);
+  --chart-5: var(--color-brand-neutral-400);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: var(--color-brand-neutral-700);
+  --sidebar-primary: var(--color-brand-blue-600);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--color-brand-blue-50);
+  --sidebar-accent-foreground: var(--color-brand-blue-700);
+  --sidebar-border: var(--color-brand-neutral-200);
+  --sidebar-ring: var(--color-brand-blue-500);
+
+  /* Brand gradients (dish + signal) */
+  --brand-gradient: linear-gradient(
+    135deg,
+    var(--color-brand-blue-400) 0%,
+    var(--color-brand-blue-600) 55%,
+    var(--color-brand-blue-800) 100%
+  );
+  --brand-gradient-accent: linear-gradient(
+    135deg,
+    var(--color-brand-red-400) 0%,
+    var(--color-brand-red-600) 100%
+  );
+}
+
+.dark {
+  --background: var(--color-brand-neutral-950);
+  --foreground: var(--color-brand-neutral-50);
+  --card: var(--color-brand-neutral-900);
+  --card-foreground: var(--color-brand-neutral-50);
+  --popover: var(--color-brand-neutral-900);
+  --popover-foreground: var(--color-brand-neutral-50);
+
+  --primary: var(--color-brand-blue-400);
+  --primary-foreground: var(--color-brand-neutral-950);
+
+  --secondary: var(--color-brand-blue-900);
+  --secondary-foreground: var(--color-brand-blue-100);
+
+  --muted: var(--color-brand-neutral-800);
+  --muted-foreground: var(--color-brand-neutral-400);
+
+  --accent: var(--color-brand-blue-950);
+  --accent-foreground: var(--color-brand-blue-100);
+
+  --destructive: var(--color-brand-red-400);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: var(--color-brand-blue-400);
+
+  --chart-1: var(--color-brand-blue-400);
+  --chart-2: var(--color-brand-red-400);
+  --chart-3: var(--color-brand-blue-200);
+  --chart-4: var(--color-brand-red-300);
+  --chart-5: var(--color-brand-neutral-400);
+
+  --sidebar: var(--color-brand-neutral-950);
+  --sidebar-foreground: var(--color-brand-neutral-200);
+  --sidebar-primary: var(--color-brand-blue-400);
+  --sidebar-primary-foreground: var(--color-brand-neutral-950);
+  --sidebar-accent: var(--color-brand-blue-950);
+  --sidebar-accent-foreground: var(--color-brand-blue-100);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: var(--color-brand-blue-400);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading font-bold tracking-tight text-balance;
+  }
+
+  h1 {
+    @apply text-4xl;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  h5 {
+    @apply text-lg;
+  }
+
+  h6 {
+    @apply text-base;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+    color: var(--foreground);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Brand helpers ------------------------------------------------------------ */
+
+@utility text-brand-gradient {
+  background-image: var(--brand-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility text-brand-gradient-accent {
+  background-image: var(--brand-gradient-accent);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility bg-brand-gradient {
+  background-image: var(--brand-gradient);
+}
+
+@utility bg-brand-gradient-accent {
+  background-image: var(--brand-gradient-accent);
 }
