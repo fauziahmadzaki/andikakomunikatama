@@ -1,0 +1,221 @@
+%% ERD KEUANGAN, VOUCHER, DAN AKUNTANSI
+erDiagram
+    AKUN {
+        int id PK
+        string kode_akun UK
+        string nama_akun
+        int id_kategori FK
+        enum pajak
+        decimal saldo
+    }
+    KATEGORI_AKUN {
+        int id PK
+        string nama_kategori
+        enum tipe "aset|kewajiban|ekuitas|pendapatan|beban (asumsi)"
+    }
+    REKENING {
+        int id PK
+        string nama_rekening
+        string atas_nama
+        string no_rekening
+        bool tampil_invoice_broadband
+        bool tampil_invoice_corporate
+    }
+    PEMBAYARAN {
+        int id PK
+        int id_warga FK
+        int id_sales FK
+        int id_rekening FK
+        decimal nominal_harus_dibayar
+        decimal nominal_pembayaran
+        enum status_pembayaran
+        enum status_setor
+        string periode_pembayaran
+        datetime waktu_entry
+    }
+    PEMASUKAN {
+        int id PK
+        int id_lokasi FK
+        int id_rekening FK
+        string nama_warga
+        text alamat
+        string tlp
+        string jns_pemasukan
+        text keterangan
+        decimal nominal
+        datetime waktu_pemasukan
+        string foto
+    }
+    PEMASUKAN_NON_LANGGANAN {
+        int id PK
+        int id_warga FK
+        int id_tipe_pembayaran FK
+        int jumlah
+        decimal total
+        string bukti
+        int id_sales FK
+    }
+    PENGELUARAN {
+        int id PK
+        int id_lokasi FK
+        int id_rekening FK
+        enum tipe_pengeluaran "Wajib|Tidak Wajib Tiap Bulan"
+        string jns_pengeluaran
+        text keterangan
+        decimal nominal
+        datetime waktu_pengeluaran
+        string foto
+        int id_sales FK
+    }
+    SETOR {
+        int id PK
+        int id_sales FK
+        int id_rekening FK
+        decimal nominal_harus_disetor
+        decimal nominal_setor
+        enum status
+        string periode
+        string bukti
+    }
+    MUTASI {
+        int id PK
+        int id_rekening FK
+        date tanggal
+        string keterangan_kredit
+        decimal jumlah_kredit
+        string keterangan_debit
+        decimal jumlah_debit
+        decimal saldo
+    }
+    PO {
+        int id PK
+        enum jenis "PO|Penawaran Harga"
+        string nama_pelanggan
+        string nama_perusahaan
+        text alamat
+        string tlp
+        date tanggal
+    }
+    CONTACT {
+        int id PK
+        string nama_display
+        enum tipe "Vendor|Karyawan|Customer|Lainnya"
+        string email
+        string telepon
+        string telepon_hp
+        string perusahaan
+        decimal balance
+        datetime created
+    }
+    PETTY_CASH {
+        int id PK
+        string nomor UK
+        int id_akun FK
+        int id_rekening FK
+        int id_contact FK
+        text keterangan
+        string lampiran
+        enum status
+        decimal total
+        decimal telah_digunakan
+        decimal sisa
+        enum status_pembayaran
+    }
+    REMBURSMEN {
+        int id PK
+        string nomor UK
+        int id_akun FK
+        int id_rekening FK
+        int id_contact FK
+        text keterangan
+        string lampiran
+        enum status
+        decimal total
+        enum status_pembayaran
+    }
+    PAYMENT_REQUEST {
+        int id PK
+        string nomor UK
+        int id_akun FK
+        int id_rekening FK
+        int id_contact FK
+        text keterangan
+        string lampiran
+        enum status
+        decimal total
+        enum status_pembayaran
+    }
+    BALANCE_ENTRY {
+        int id PK
+        string nama_balance
+        text keterangan
+        decimal nominal
+        datetime waktu
+        int id_petugas FK
+        datetime waktu_input
+    }
+    VOUCHER_HARGA {
+        int id PK
+        string nama
+        decimal harga_jual
+        decimal harga_beli
+        string profile
+        text keterangan
+        int id_lokasi FK
+        int id_router FK
+        text script_on_login
+    }
+    VOUCHER_ITEM {
+        int id PK
+        int id_harga FK
+        string username
+        string password
+        enum status "Belum Terjual|Terjual|Dihapus"
+        datetime waktu_generate
+        datetime waktu_jual
+        bigint bytes_in
+        bigint bytes_out
+    }
+    PENJUALAN_VOUCHER {
+        int id PK
+        int id_voucher FK
+        int id_reseller FK
+        decimal harga_jual
+        decimal harga_beli
+        decimal keuntungan
+        string tlp_pelanggan
+        datetime waktu_jual
+        enum status
+    }
+    SETOR_VOUCHER {
+        int id PK
+        int id_reseller FK
+        decimal nominal_setor
+        datetime waktu_setor
+        string nama_penyetor
+        string nama_penerima
+        text keterangan
+    }
+
+    KATEGORI_AKUN ||--o{ AKUN : "mengelompokkan"
+    AKUN ||--o{ PETTY_CASH : "dibayar dari"
+    AKUN ||--o{ REMBURSMEN : "dibayar dari"
+    AKUN ||--o{ PAYMENT_REQUEST : "dibayar dari"
+    REKENING ||--o{ PEMBAYARAN : "menerima"
+    REKENING ||--o{ PEMASUKAN : "menerima"
+    REKENING ||--o{ PENGELUARAN : "mengeluarkan"
+    REKENING ||--o{ SETOR : "setoran"
+    REKENING ||--o{ MUTASI : "buku besar"
+    REKENING ||--o{ PETTY_CASH : "sumber dana"
+    REKENING ||--o{ REMBURSMEN : "sumber dana"
+    REKENING ||--o{ PAYMENT_REQUEST : "sumber dana"
+    CONTACT ||--o{ PETTY_CASH : "penerima"
+    CONTACT ||--o{ REMBURSMEN : "penerima"
+    CONTACT ||--o{ PAYMENT_REQUEST : "penerima"
+    PEMBAYARAN }o--|| PEMASUKAN : "direkap ke"
+    PENGELUARAN }o--|| MUTASI : "mempengaruhi"
+    PEMASUKAN }o--|| MUTASI : "mempengaruhi"
+    SETOR }o--|| MUTASI : "mempengaruhi"
+    VOUCHER_HARGA ||--o{ VOUCHER_ITEM : "menghasilkan"
+    VOUCHER_ITEM ||--o| PENJUALAN_VOUCHER : "terjual"
+    PENJUALAN_VOUCHER }o--o| SETOR_VOUCHER : "disetor"

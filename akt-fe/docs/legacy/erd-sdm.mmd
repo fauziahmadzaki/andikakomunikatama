@@ -1,0 +1,157 @@
+%% ERD SDM, PAYROLL, DAN ABSENSI
+%% Catatan: karyawan adalah baris WARGA dengan level HRD/Kepala*/Teknisi/Sales/CS/Karyawan/dst.
+erDiagram
+    WARGA {
+        int id PK
+        enum level "24 role"
+        string nama_warga
+        string tlp
+        string nik
+        string foto_ktp
+    }
+    MASTER_GAJI {
+        int id PK
+        int id_warga FK
+        date tanggal_lahir
+        date tanggal_bergabung
+        date tanggal_berakhir_masa_kerja
+        string jabatan
+        string informasi_rekening
+        string foto_karyawan
+        string nama_ibu
+        string tlp_ibu
+        string nama_ayah
+        string tlp_ayah
+        int id_shift FK
+        decimal gaji_pokok
+        decimal tunjangan_makan
+        decimal tunjangan_transport
+        decimal nominal_lembur_perjam
+        int hak_cuti
+        int sisa_cuti
+    }
+    SHIFT {
+        int id PK
+        string nama_cabang
+        text alamat
+        string id_shift
+        string nama_shift
+        bool multi_shift
+        time waktu_masuk
+        time waktu_pulang
+        string titik_koordinat_masuk
+        string titik_koordinat_pulang
+    }
+    ABSENSI {
+        int id PK
+        int id_warga FK
+        date tanggal
+        int id_shift FK
+        datetime masuk
+        int telat_menit
+        datetime pulang
+        int durasi_kerja
+        enum jenis "Masuk|Izin|Cuti|Alpha|Lembur (asumsi)"
+        string foto_masuk
+        string foto_pulang
+        string maps_masuk
+        string maps_pulang
+        int max_jarak
+        int jarak
+    }
+    LEMBUR {
+        int id PK
+        int id_warga FK
+        date tanggal
+        text keterangan
+        datetime waktu_masuk
+        datetime waktu_pulang
+        int durasi
+        decimal total_pendapatan
+        enum status "Pending|Disetujui|Ditolak (asumsi)"
+    }
+    CUTI {
+        int id PK
+        int id_warga FK
+        enum jenis "Cuti|Izin"
+        date tanggal_mulai
+        date tanggal_akhir
+        text keterangan
+        string foto
+        enum status
+    }
+    TUNJANGAN {
+        int id PK
+        int id_warga FK
+        int id_rekening FK
+        enum jns_tunjangan "Wajib|Tidak Wajib Tiap Bulan"
+        string nama_tunjangan
+        decimal nominal
+        datetime waktu
+        string foto
+    }
+    PEMOTONGAN {
+        int id PK
+        int id_warga FK
+        enum jenis_pemotongan "Wajib|Tidak Wajib Tiap Bulan"
+        string nama_pemotongan
+        decimal nominal
+        datetime waktu
+    }
+    PIUTANG_KARYAWAN {
+        int id PK
+        int id_warga FK
+        int id_rekening FK
+        enum pemotongan_gaji "Ya|Tidak"
+        text keterangan
+        decimal nominal_hutang
+        datetime waktu_hutang
+        datetime waktu_pemotongan
+        decimal total_pengembalian
+        decimal sisa_hutang
+    }
+    PAYROLL_PERIODE {
+        int id PK
+        date cut_off_mulai
+        date cut_off_akhir
+        enum bulan "Sama|Berikutnya"
+        int id_cut_off
+        string periode_label
+    }
+    GAJI_BULANAN {
+        int id PK
+        int id_warga FK
+        int id_periode FK
+        int total_hari_kerja
+        int total_hari_izin
+        int total_hari_cuti
+        int total_hari_absen
+        decimal tunjangan_transport_makan
+        decimal tunjangan_lembur
+        decimal tunjangan_lain
+        decimal gaji_kotor
+        decimal pemotongan
+        decimal gaji_bersih
+        enum status "Draft|Dibayar (asumsi)"
+    }
+    PEKERJAAN_HARIAN {
+        int id PK
+        int id_warga FK
+        string nama_aktifitas
+        date tanggal
+        text keterangan
+        string foto
+    }
+
+    WARGA ||--o| MASTER_GAJI : "profil payroll"
+    SHIFT ||--o{ MASTER_GAJI : "shift default"
+    SHIFT ||--o{ ABSENSI : "dijadwalkan"
+    WARGA ||--o{ ABSENSI : "absen"
+    WARGA ||--o{ LEMBUR : "lembur"
+    WARGA ||--o{ CUTI : "cuti/izin"
+    WARGA ||--o{ TUNJANGAN : "menerima"
+    WARGA ||--o{ PEMOTONGAN : "dipotong"
+    WARGA ||--o{ PIUTANG_KARYAWAN : "berhutang"
+    WARGA ||--o{ GAJI_BULANAN : "digaji"
+    PAYROLL_PERIODE ||--o{ GAJI_BULANAN : "periode"
+    WARGA ||--o{ PEKERJAAN_HARIAN : "melaporkan"

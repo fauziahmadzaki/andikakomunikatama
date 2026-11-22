@@ -1,0 +1,190 @@
+%% MURANET ERD v2 — HR, Attendance & Payroll
+%% PostgreSQL, UUID primary keys, single company.
+%% Reference entity from core: BRANCHES, EMPLOYEES.
+
+erDiagram
+    BRANCHES {
+        uuid id PK
+        varchar code UK
+        varchar name
+    }
+
+    EMPLOYEES {
+        uuid id PK
+        uuid branch_id FK
+        uuid user_id FK
+        varchar employee_number UK
+        varchar full_name
+        varchar phone
+        varchar position
+        varchar status
+        date hire_date
+    }
+
+    EMPLOYEE_SALARY_PROFILES {
+        uuid id PK
+        uuid employee_id FK
+        uuid default_shift_id FK
+        numeric base_salary
+        numeric meal_allowance_daily
+        numeric transport_allowance_daily
+        numeric overtime_rate_hourly
+        int annual_leave_days
+        int remaining_leave_days
+        varchar bank_name
+        varchar bank_account_number
+        date effective_from
+        date effective_to
+    }
+
+    SHIFTS {
+        uuid id PK
+        uuid branch_id FK
+        varchar code UK
+        varchar name
+        boolean is_multi_shift
+        time start_time
+        time end_time
+        numeric check_in_latitude
+        numeric check_in_longitude
+        numeric check_out_latitude
+        numeric check_out_longitude
+        int radius_m
+        boolean is_active
+    }
+
+    ATTENDANCE_RECORDS {
+        uuid id PK
+        uuid employee_id FK
+        uuid shift_id FK
+        uuid check_in_photo_file_id FK
+        uuid check_out_photo_file_id FK
+        date attendance_date
+        timestamptz check_in_at
+        timestamptz check_out_at
+        int late_minutes
+        int work_minutes
+        varchar attendance_type
+        numeric check_in_latitude
+        numeric check_in_longitude
+        numeric check_out_latitude
+        numeric check_out_longitude
+        int check_in_distance_m
+        int check_out_distance_m
+        text notes
+    }
+
+    OVERTIME_REQUESTS {
+        uuid id PK
+        uuid employee_id FK
+        uuid approved_by FK
+        date overtime_date
+        timestamptz start_at
+        timestamptz end_at
+        int minutes
+        numeric amount
+        varchar status
+        timestamptz approved_at
+        text notes
+    }
+
+    LEAVE_REQUESTS {
+        uuid id PK
+        uuid employee_id FK
+        uuid approved_by FK
+        uuid attachment_file_id FK
+        varchar leave_type
+        date start_date
+        date end_date
+        int days
+        text reason
+        varchar status
+        timestamptz approved_at
+    }
+
+    EMPLOYEE_ALLOWANCES {
+        uuid id PK
+        uuid employee_id FK
+        varchar name
+        varchar allowance_type
+        numeric amount
+        date effective_from
+        date effective_to
+        boolean is_active
+    }
+
+    EMPLOYEE_DEDUCTIONS {
+        uuid id PK
+        uuid employee_id FK
+        varchar name
+        varchar deduction_type
+        numeric amount
+        date effective_from
+        date effective_to
+        boolean is_active
+    }
+
+    EMPLOYEE_LOANS {
+        uuid id PK
+        uuid employee_id FK
+        uuid approved_by FK
+        numeric amount
+        numeric remaining_amount
+        numeric installment_amount
+        varchar status
+        date loan_date
+        text notes
+    }
+
+    PAYROLL_PERIODS {
+        uuid id PK
+        uuid closed_by FK
+        varchar code UK
+        date start_date
+        date end_date
+        varchar status
+        timestamptz closed_at
+    }
+
+    PAYSLIPS {
+        uuid id PK
+        uuid employee_id FK
+        uuid payroll_period_id FK
+        int working_days
+        int leave_days
+        int absent_days
+        int overtime_minutes
+        numeric meal_transport_allowance
+        numeric overtime_pay
+        numeric other_allowance
+        numeric gross_salary
+        numeric total_deductions
+        numeric loan_deduction
+        numeric net_salary
+        varchar status
+        timestamptz paid_at
+    }
+
+    DAILY_ACTIVITIES {
+        uuid id PK
+        uuid employee_id FK
+        uuid photo_file_id FK
+        date activity_date
+        varchar activity_name
+        text description
+    }
+
+    BRANCHES ||--o{ EMPLOYEES : "staffs"
+    BRANCHES ||--o{ SHIFTS : "defines"
+    EMPLOYEES ||--o| EMPLOYEE_SALARY_PROFILES : "has"
+    SHIFTS ||--o{ EMPLOYEE_SALARY_PROFILES : "default_shift"
+    SHIFTS ||--o{ ATTENDANCE_RECORDS : "scheduled"
+    EMPLOYEES ||--o{ ATTENDANCE_RECORDS : "checks_in"
+    EMPLOYEES ||--o{ OVERTIME_REQUESTS : "requests"
+    EMPLOYEES ||--o{ LEAVE_REQUESTS : "requests"
+    EMPLOYEES ||--o{ EMPLOYEE_ALLOWANCES : "receives"
+    EMPLOYEES ||--o{ EMPLOYEE_DEDUCTIONS : "subject_to"
+    EMPLOYEES ||--o{ EMPLOYEE_LOANS : "borrows"
+    EMPLOYEES ||--o{ PAYSLIPS : "paid_by"
+    PAYROLL_PERIODS ||--o{ PAYSLIPS : "covers"
+    EMPLOYEES ||--o{ DAILY_ACTIVITIES : "reports"

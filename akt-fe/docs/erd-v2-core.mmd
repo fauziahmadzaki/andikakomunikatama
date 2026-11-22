@@ -1,0 +1,551 @@
+%% MURANET ERD v2 — Core
+%% Company, identity, customers, plans, subscriptions, network, tickets, platform.
+%% PostgreSQL, UUID primary keys, single company.
+
+erDiagram
+    COMPANY_PROFILES {
+        uuid id PK
+        varchar name
+        varchar legal_name
+        uuid logo_file_id FK
+        text address
+        varchar phone
+        varchar email
+        varchar tax_number
+        varchar invoice_prefix
+        numeric bhp_rate
+        numeric uso_rate
+        numeric isp_fee_rate
+    }
+
+    BRANCHES {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar phone
+        text address
+        boolean is_head_office
+        boolean is_active
+    }
+
+    USERS {
+        uuid id PK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        boolean is_active
+        timestamptz last_login_at
+    }
+
+    ROLES {
+        uuid id PK
+        varchar code UK
+        varchar name
+        boolean is_system
+    }
+
+    PERMISSIONS {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar module
+    }
+
+    ROLE_PERMISSIONS {
+        uuid role_id PK, FK
+        uuid permission_id PK, FK
+    }
+
+    USER_ROLES {
+        uuid user_id PK, FK
+        uuid role_id PK, FK
+        uuid branch_id FK
+    }
+
+    USER_BRANCHES {
+        uuid user_id PK, FK
+        uuid branch_id PK, FK
+        boolean is_primary
+    }
+
+    EMPLOYEES {
+        uuid id PK
+        uuid user_id FK
+        uuid branch_id FK
+        varchar employee_number UK
+        varchar full_name
+        varchar phone
+        varchar email
+        date hire_date
+        date end_date
+        varchar position
+        varchar status
+        uuid photo_file_id FK
+    }
+
+    CUSTOMERS {
+        uuid id PK
+        uuid branch_id FK
+        uuid sales_employee_id FK
+        varchar customer_number UK
+        varchar full_name
+        varchar customer_type
+        varchar status
+        date registered_at
+        text notes
+    }
+
+    CUSTOMER_ACCOUNTS {
+        uuid id PK
+        uuid customer_id FK
+        varchar email UK
+        varchar phone UK
+        varchar password_hash
+        boolean is_active
+        timestamptz last_login_at
+    }
+
+    CUSTOMER_ADDRESSES {
+        uuid id PK
+        uuid customer_id FK
+        varchar address_type
+        text address_line
+        varchar village
+        varchar district
+        varchar city
+        varchar province
+        varchar postal_code
+        numeric latitude
+        numeric longitude
+        boolean is_primary
+    }
+
+    CUSTOMER_CONTACTS {
+        uuid id PK
+        uuid customer_id FK
+        varchar contact_type
+        varchar value
+        boolean is_primary
+        boolean is_verified
+    }
+
+    CUSTOMER_IDENTITIES {
+        uuid id PK
+        uuid customer_id FK
+        varchar identity_type
+        varchar identity_number UK
+        uuid file_id FK
+    }
+
+    CUSTOMER_STATUS_HISTORY {
+        uuid id PK
+        uuid customer_id FK
+        varchar status
+        text reason
+        uuid changed_by FK
+        timestamptz changed_at
+    }
+
+    PLANS {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar description
+        varchar connection_type
+        varchar billing_type
+        boolean is_active
+    }
+
+    PLAN_PRICES {
+        uuid id PK
+        uuid plan_id FK
+        numeric price
+        boolean is_taxable
+        date effective_from
+        date effective_to
+    }
+
+    PLAN_BRANCHES {
+        uuid plan_id PK, FK
+        uuid branch_id PK, FK
+    }
+
+    DISCOUNTS {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar method
+        numeric value
+        date starts_at
+        date ends_at
+        boolean is_active
+    }
+
+    DISCOUNT_SCOPES {
+        uuid id PK
+        uuid discount_id FK
+        varchar scope_type
+        uuid branch_id FK
+        uuid plan_id FK
+        uuid customer_id FK
+    }
+
+    SUBSCRIPTIONS {
+        uuid id PK
+        uuid customer_id FK
+        uuid plan_id FK
+        uuid branch_id FK
+        uuid discount_id FK
+        uuid sales_employee_id FK
+        varchar status
+        date start_date
+        date end_date
+        smallint due_day
+        boolean prorate_enabled
+        boolean tax_enabled
+        numeric price_snapshot
+    }
+
+    SUBSCRIPTION_STATUS_HISTORY {
+        uuid id PK
+        uuid subscription_id FK
+        varchar status
+        text reason
+        uuid changed_by FK
+        timestamptz changed_at
+    }
+
+    SERVICES {
+        uuid id PK
+        uuid subscription_id FK
+        varchar service_type
+        varchar username UK
+        uuid router_id FK
+        uuid olt_id FK
+        uuid passive_device_id FK
+        varchar status
+        date installed_at
+        date terminated_at
+    }
+
+    SERVICE_CREDENTIALS {
+        uuid id PK
+        uuid service_id FK
+        varchar credential_type
+        varchar username
+        varchar password_hash
+        varchar secret_ref
+        boolean is_active
+    }
+
+    ROUTERS {
+        uuid id PK
+        uuid branch_id FK
+        varchar name
+        varchar host
+        int api_port
+        varchar username
+        varchar secret_ref
+        boolean is_active
+        timestamptz last_seen_at
+    }
+
+    OLTS {
+        uuid id PK
+        uuid branch_id FK
+        varchar name
+        varchar vendor
+        varchar model
+        varchar host
+        int telnet_port
+        int snmp_port
+        varchar snmp_version
+        varchar username
+        varchar secret_ref
+        boolean is_active
+    }
+
+    POLES {
+        uuid id PK
+        uuid branch_id FK
+        varchar code UK
+        varchar name
+        numeric latitude
+        numeric longitude
+        text address
+        uuid photo_file_id FK
+    }
+
+    PASSIVE_DEVICES {
+        uuid id PK
+        uuid branch_id FK
+        uuid parent_device_id FK
+        uuid olt_id FK
+        uuid pole_id FK
+        varchar device_type
+        varchar code UK
+        varchar name
+        int capacity
+        int used_capacity
+        numeric latitude
+        numeric longitude
+        text address
+        uuid photo_file_id FK
+    }
+
+    ANTENNAS {
+        uuid id PK
+        uuid branch_id FK
+        uuid router_id FK
+        varchar mac
+        varchar ip
+        varchar ssid
+        varchar frequency
+        varchar channel
+        varchar secret_ref
+        text location
+        text notes
+    }
+
+    TUNNELS {
+        uuid id PK
+        uuid router_id FK
+        varchar name
+        varchar username
+        varchar secret_ref
+        boolean is_active
+    }
+
+    ACS_SERVERS {
+        uuid id PK
+        varchar name
+        varchar base_url
+        varchar username
+        varchar secret_ref
+        boolean is_active
+    }
+
+    INVENTORY_ITEMS {
+        uuid id PK
+        uuid branch_id FK
+        varchar sku
+        varchar name
+        varchar category
+        varchar serial_number UK
+        varchar mac
+        varchar status
+        numeric purchase_price
+        date purchased_at
+        numeric current_value
+        text notes
+    }
+
+    INVENTORY_MOVEMENTS {
+        uuid id PK
+        uuid inventory_item_id FK
+        uuid from_branch_id FK
+        uuid to_branch_id FK
+        uuid employee_id FK
+        varchar movement_type
+        varchar reference_type
+        uuid reference_id
+        int quantity
+        numeric unit_price
+        timestamptz occurred_at
+        text notes
+        uuid photo_file_id FK
+    }
+
+    TICKET_CATEGORIES {
+        uuid id PK
+        varchar code UK
+        varchar name
+        boolean is_active
+    }
+
+    TICKETS {
+        uuid id PK
+        uuid branch_id FK
+        uuid customer_id FK
+        uuid subscription_id FK
+        uuid category_id FK
+        varchar ticket_number UK
+        varchar ticket_type
+        varchar status
+        varchar priority
+        varchar subject
+        text description
+        timestamptz reported_at
+        timestamptz first_response_at
+        timestamptz resolved_at
+        timestamptz closed_at
+        uuid created_by FK
+    }
+
+    TICKET_EVENTS {
+        uuid id PK
+        uuid ticket_id FK
+        uuid actor_id FK
+        varchar event_type
+        varchar status
+        text notes
+        jsonb metadata
+        timestamptz created_at
+    }
+
+    TICKET_ASSIGNMENTS {
+        uuid id PK
+        uuid ticket_id FK
+        uuid employee_id FK
+        varchar assignment_role
+        timestamptz assigned_at
+        timestamptz unassigned_at
+    }
+
+    TICKET_SCHEDULES {
+        uuid id PK
+        uuid ticket_id FK
+        uuid employee_id FK
+        date scheduled_date
+        varchar time_slot
+        varchar status
+        text notes
+    }
+
+    TICKET_DEVICES {
+        uuid id PK
+        uuid ticket_id FK
+        uuid inventory_item_id FK
+        varchar action
+        int quantity
+        text notes
+    }
+
+    INSTALLATION_REPORTS {
+        uuid id PK
+        uuid ticket_id FK
+        varchar report_number UK
+        varchar signed_by
+        uuid signature_file_id FK
+        uuid photo_file_id FK
+        text notes
+        timestamptz completed_at
+    }
+
+    FILES {
+        uuid id PK
+        varchar storage_key UK
+        varchar file_name
+        varchar mime_type
+        bigint size_bytes
+        varchar checksum
+        uuid uploaded_by FK
+    }
+
+    ATTACHMENTS {
+        uuid id PK
+        uuid file_id FK
+        varchar entity_type
+        uuid entity_id
+        timestamptz created_at
+    }
+
+    AUDIT_LOGS {
+        uuid id PK
+        uuid user_id FK
+        varchar action
+        varchar entity_type
+        uuid entity_id
+        jsonb before_data
+        jsonb after_data
+        inet ip_address
+        text user_agent
+        timestamptz created_at
+    }
+
+    SYSTEM_SETTINGS {
+        uuid id PK
+        varchar setting_key UK
+        jsonb setting_value
+        text description
+        uuid updated_by FK
+        timestamptz updated_at
+    }
+
+    INTEGRATION_LOGS {
+        uuid id PK
+        varchar integration
+        varchar direction
+        varchar reference_type
+        uuid reference_id
+        jsonb request_payload
+        jsonb response_payload
+        varchar status
+        text error_message
+        timestamptz created_at
+    }
+
+    USERS ||--o{ USER_ROLES : "assigned"
+    ROLES ||--o{ USER_ROLES : "grants"
+    BRANCHES ||--o{ USER_ROLES : "scopes"
+    USERS ||--o{ USER_BRANCHES : "scoped_to"
+    BRANCHES ||--o{ USER_BRANCHES : "includes"
+    USERS ||--o| EMPLOYEES : "profile"
+    ROLES ||--o{ ROLE_PERMISSIONS : "has"
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : "granted"
+
+    BRANCHES ||--o{ EMPLOYEES : "staffs"
+    BRANCHES ||--o{ CUSTOMERS : "serves"
+    EMPLOYEES ||--o{ CUSTOMERS : "acquires"
+    CUSTOMERS ||--o| CUSTOMER_ACCOUNTS : "portal"
+    CUSTOMERS ||--o{ CUSTOMER_ADDRESSES : "has"
+    CUSTOMERS ||--o{ CUSTOMER_CONTACTS : "has"
+    CUSTOMERS ||--o{ CUSTOMER_IDENTITIES : "has"
+    CUSTOMERS ||--o{ CUSTOMER_STATUS_HISTORY : "history"
+
+    PLANS ||--o{ PLAN_PRICES : "priced_by"
+    PLANS ||--o{ PLAN_BRANCHES : "available_at"
+    BRANCHES ||--o{ PLAN_BRANCHES : "offers"
+    DISCOUNTS ||--o{ DISCOUNT_SCOPES : "limited_by"
+    DISCOUNTS ||--o{ SUBSCRIPTIONS : "applies_to"
+
+    CUSTOMERS ||--o{ SUBSCRIPTIONS : "owns"
+    PLANS ||--o{ SUBSCRIPTIONS : "selected"
+    BRANCHES ||--o{ SUBSCRIPTIONS : "billed_from"
+    SUBSCRIPTIONS ||--o{ SUBSCRIPTION_STATUS_HISTORY : "history"
+    SUBSCRIPTIONS ||--o{ SERVICES : "includes"
+    SERVICES ||--o{ SERVICE_CREDENTIALS : "uses"
+
+    BRANCHES ||--o{ ROUTERS : "operates"
+    BRANCHES ||--o{ OLTS : "operates"
+    BRANCHES ||--o{ POLES : "has"
+    BRANCHES ||--o{ PASSIVE_DEVICES : "has"
+    BRANCHES ||--o{ ANTENNAS : "has"
+    BRANCHES ||--o{ INVENTORY_ITEMS : "stores"
+    ROUTERS ||--o{ ANTENNAS : "has"
+    ROUTERS ||--o{ TUNNELS : "has"
+    ROUTERS ||--o{ SERVICES : "terminates"
+    OLTS ||--o{ PASSIVE_DEVICES : "manages"
+    POLES ||--o{ PASSIVE_DEVICES : "supports"
+    PASSIVE_DEVICES ||--o{ PASSIVE_DEVICES : "parent_of"
+    PASSIVE_DEVICES ||--o{ SERVICES : "connects"
+    OLTS ||--o{ SERVICES : "serves"
+    INVENTORY_ITEMS ||--o{ INVENTORY_MOVEMENTS : "moves"
+
+    BRANCHES ||--o{ TICKETS : "handles"
+    CUSTOMERS ||--o{ TICKETS : "reports"
+    SUBSCRIPTIONS ||--o{ TICKETS : "relates_to"
+    TICKET_CATEGORIES ||--o{ TICKETS : "classifies"
+    TICKETS ||--o{ TICKET_EVENTS : "has"
+    TICKETS ||--o{ TICKET_ASSIGNMENTS : "assigned"
+    EMPLOYEES ||--o{ TICKET_ASSIGNMENTS : "handles"
+    TICKETS ||--o{ TICKET_SCHEDULES : "schedules"
+    EMPLOYEES ||--o{ TICKET_SCHEDULES : "attends"
+    TICKETS ||--o{ TICKET_DEVICES : "uses"
+    INVENTORY_ITEMS ||--o{ TICKET_DEVICES : "consumed"
+    TICKETS ||--o| INSTALLATION_REPORTS : "produces"
+
+    FILES ||--o{ ATTACHMENTS : "referenced"
+    USERS ||--o{ FILES : "uploads"
+    USERS ||--o{ AUDIT_LOGS : "performs"
+    USERS ||--o{ SYSTEM_SETTINGS : "updates"

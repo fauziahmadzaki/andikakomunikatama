@@ -1,0 +1,220 @@
+%% MURANET ERD v2 — Growth, Vouchers, Loyalty & Notifications
+%% PostgreSQL, UUID primary keys, single company.
+%% Reference entities from core: CUSTOMERS, ROUTERS, EMPLOYEES, USERS.
+
+erDiagram
+    CUSTOMERS {
+        uuid id PK
+        varchar customer_number UK
+        varchar full_name
+    }
+
+    EMPLOYEES {
+        uuid id PK
+        varchar employee_number UK
+        varchar full_name
+    }
+
+    USERS {
+        uuid id PK
+        varchar username UK
+    }
+
+    ROUTERS {
+        uuid id PK
+        varchar name
+        varchar host
+    }
+
+    RESELLERS {
+        uuid id PK
+        uuid customer_id FK
+        varchar reseller_code UK
+        numeric deposit_balance
+        varchar commission_method
+        numeric commission_value
+        boolean is_active
+    }
+
+    VOUCHER_PRODUCTS {
+        uuid id PK
+        uuid branch_id FK
+        uuid router_id FK
+        varchar code UK
+        varchar name
+        numeric sell_price
+        numeric buy_price
+        varchar hotspot_profile
+        text script_on_login
+        boolean is_active
+    }
+
+    VOUCHERS {
+        uuid id PK
+        uuid voucher_product_id FK
+        varchar voucher_code UK
+        varchar username UK
+        varchar password_hash
+        varchar status
+        timestamptz generated_at
+        timestamptz sold_at
+        timestamptz expires_at
+        bigint bytes_in
+        bigint bytes_out
+    }
+
+    VOUCHER_SALES {
+        uuid id PK
+        uuid voucher_id FK
+        uuid reseller_id FK
+        numeric sell_price
+        numeric buy_price
+        numeric profit
+        varchar customer_phone
+        varchar payment_method
+        varchar status
+        timestamptz sold_at
+    }
+
+    VOUCHER_DEPOSITS {
+        uuid id PK
+        uuid reseller_id FK
+        uuid received_by FK
+        uuid proof_file_id FK
+        numeric amount
+        timestamptz deposited_at
+        text notes
+    }
+
+    POINT_RULES {
+        uuid id PK
+        uuid branch_id FK
+        varchar name
+        text description
+        int points
+        varchar condition_type
+        varchar condition_value
+        boolean is_active
+    }
+
+    POINT_BALANCES {
+        uuid id PK
+        uuid customer_id FK
+        int balance
+        timestamptz updated_at
+    }
+
+    POINT_TRANSACTIONS {
+        uuid id PK
+        uuid customer_id FK
+        uuid point_rule_id FK
+        varchar transaction_type
+        int points
+        varchar reference_type
+        uuid reference_id
+        text description
+        timestamptz created_at
+    }
+
+    REWARDS {
+        uuid id PK
+        uuid branch_id FK
+        uuid photo_file_id FK
+        varchar name
+        text description
+        int points_required
+        int stock
+        boolean is_active
+    }
+
+    REWARD_REDEMPTIONS {
+        uuid id PK
+        uuid reward_id FK
+        uuid customer_id FK
+        uuid handled_by FK
+        uuid pickup_photo_file_id FK
+        int points
+        varchar status
+        timestamptz requested_at
+        timestamptz fulfilled_at
+        text notes
+    }
+
+    NOTIFICATION_TEMPLATES {
+        uuid id PK
+        varchar event_code UK
+        varchar channel
+        varchar subject
+        text body
+        boolean is_active
+    }
+
+    ANNOUNCEMENTS {
+        uuid id PK
+        uuid created_by FK
+        varchar title
+        text content
+        varchar media
+        varchar target_type
+        jsonb target_filter
+        varchar status
+        timestamptz published_at
+        timestamptz expires_at
+    }
+
+    NOTIFICATION_LOGS {
+        uuid id PK
+        uuid template_id FK
+        varchar channel
+        varchar provider
+        varchar recipient
+        varchar status
+        timestamptz sent_at
+        text error_message
+        jsonb payload
+    }
+
+    WHATSAPP_DEVICES {
+        uuid id PK
+        varchar name
+        varchar phone_number
+        varchar provider
+        varchar secret_ref
+        varchar status
+        timestamptz last_seen_at
+    }
+
+    TELEGRAM_GROUPS {
+        uuid id PK
+        varchar name
+        varchar chat_id UK
+        varchar purpose
+        boolean is_active
+    }
+
+    MAIL_SETTINGS {
+        uuid id PK
+        varchar host
+        int port
+        varchar username
+        varchar secret_ref
+        varchar from_name
+        varchar from_email
+        boolean is_active
+    }
+
+    CUSTOMERS ||--o| RESELLERS : "becomes"
+    CUSTOMERS ||--o| POINT_BALANCES : "has"
+    CUSTOMERS ||--o{ POINT_TRANSACTIONS : "earns_spends"
+    CUSTOMERS ||--o{ REWARD_REDEMPTIONS : "redeems"
+    ROUTERS ||--o{ VOUCHER_PRODUCTS : "serves"
+    VOUCHER_PRODUCTS ||--o{ VOUCHERS : "generates"
+    VOUCHERS ||--o| VOUCHER_SALES : "sold_as"
+    RESELLERS ||--o{ VOUCHER_SALES : "sells"
+    RESELLERS ||--o{ VOUCHER_DEPOSITS : "deposits"
+    EMPLOYEES ||--o{ VOUCHER_DEPOSITS : "receives"
+    POINT_RULES ||--o{ POINT_TRANSACTIONS : "triggers"
+    REWARDS ||--o{ REWARD_REDEMPTIONS : "fulfilled_by"
+    EMPLOYEES ||--o{ REWARD_REDEMPTIONS : "handles"
+    USERS ||--o{ ANNOUNCEMENTS : "publishes"
+    NOTIFICATION_TEMPLATES ||--o{ NOTIFICATION_LOGS : "produces"

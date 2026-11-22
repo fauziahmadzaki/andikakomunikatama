@@ -1,0 +1,405 @@
+%% ERD INTI — Pelanggan, Jaringan, Langganan
+%% Sumber bukti: data-dictionary.md (modul add-warga, data-warga, data-lokasi,
+%% data-router, data-tipe-pembayaran, data-odp, data-olt-new, data-tiang, data-ticket)
+erDiagram
+LOKASI {
+    int id PK
+    string nama_lokasi
+    text alamat_lokasi
+    string tlp_lokasi
+    enum metode_insentif "Presentase|Nominal"
+    decimal insentif_sales
+    string group_wa
+    bool is_perusahaan "asumsi: baris perusahaan = 1 record lokasi"
+}
+PERUSAHAAN_PROFIL {
+    int id_lokasi PK,FK
+    string power_by
+    text keterangan_lokasi
+    string email
+    string nama_perwakilan
+    string jabatan
+    enum tagihan
+    enum periode
+    string group_wa
+    string id_telegram_ticket
+    string id_telegram_monitoring
+    string token_telegram
+    string logo_usaha
+    string logo_isp
+    string ttd_perusahaan
+    enum bhp
+    decimal nominal_bhp
+    enum uso
+    decimal nominal_uso
+    enum metode_fee
+    decimal nominal_fee
+}
+WARGA {
+    int id PK
+    string id_pelanggan UK "kode pelanggan"
+    enum level "24 role: Administrator..Playstore User"
+    enum status "Aktif|Tidak Aktif"
+    enum jns_pelanggan "Pelanggan Lama|Baru|Survey"
+    string nama_warga
+    int id_lokasi FK
+    string tlp
+    string tlp2
+    string email
+    string nik
+    string foto_ktp
+    text alamat
+    string nomor_rumah
+    string blok
+    string dusun
+    string kelurahan
+    string kecamatan
+    string kabupaten
+    string provinsi
+    string titik_lokasi "lat,lng"
+    int id_router FK
+    int id_tipe_pembayaran FK
+    int id_sales FK "self-reference ke WARGA"
+    enum jns_koneksi "Dynamic|Static|PPPOE|Hotspot|IPBiddings"
+    enum status_koneksi
+    string username
+    string password "PLAINTEXT (temuan)"
+    string no_id_identitas
+    date tgl_registrasi
+    int tgl_jatuh_tempo "1..31"
+    enum status_langganan "On|Off"
+    enum jns_blokir "Manual|Otomatis"
+    bool prorate
+    bool ppn
+    enum jns_pembagian_fee "Pembagian Hasil|Penambahan Biaya Admin"
+    enum metode_insentif_fee
+    decimal insentif_sales
+    string nama_onu
+    string sn_onu
+    string modul_olt
+    string olt_port
+    string index_onu
+    string server_akses "khusus reseller"
+}
+ROUTER {
+    int id PK
+    string nama_router
+    string ip_address "ip:portapi"
+    string username
+    string password "PLAINTEXT (temuan)"
+    int id_lokasi FK
+    int jumlah_pelanggan "denormalisasi"
+}
+TIPE_PEMBAYARAN {
+    int id PK
+    string nama_tipe
+    string keterangan_tipe
+    decimal harga
+    enum jns_tipe_pembayaran "Wajib|Tidak Wajib Tiap Bulan"
+    int id_lokasi FK
+    string profile
+    enum registrasi
+    enum filter_lokasi
+    bool ubahppn
+    enum jns_koneksi
+    int id_router FK
+    string nama_pool
+    string local_address
+    string remote_address
+    int jumlah_pelanggan "denormalisasi"
+}
+DISKON {
+    int id PK
+    int id_warga FK "nullable: diskon massal"
+    string nama_diskon
+    enum metode_diskon "Presentase|Nominal"
+    decimal nominal_diskon
+    int id_lokasi FK "nullable"
+    int id_tipe_pembayaran FK "nullable"
+    enum scope "Pelanggan|Semua|Lokasi|Paket|Paket+Lokasi"
+}
+LANGGANAN {
+    int id PK
+    int id_warga FK
+    int id_tipe_pembayaran FK
+    date tgl_mulai
+    date tgl_jatuh_tempo
+    enum status "On|Off"
+    decimal harga
+    bool prorate
+    bool ppn
+}
+TAGIHAN {
+    int id PK
+    int id_warga FK
+    string nama_tagihan
+    text keterangan
+    decimal nominal_tagihan
+    string nama_diskon
+    enum jenis_diskon
+    decimal nominal_diskon
+    decimal total_tagihan
+    date tgl_jatuh_tempo
+    string periode
+    enum status
+    datetime waktu_entry
+}
+PEMBAYARAN {
+    int id PK
+    int id_warga FK
+    int id_sales FK
+    int id_rekening FK
+    string nama_pembayaran
+    decimal nominal_harus_dibayar
+    decimal nominal_pembayaran
+    enum status_pembayaran
+    string bukti_pembayaran
+    string periode_pembayaran
+    enum metode_pembayaran
+    enum status_setor "Belum|Sudah Setor"
+    datetime waktu_entry
+    text keterangan
+}
+DEPOSIT {
+    int id PK
+    int id_warga FK
+    int id_sales FK
+    decimal nominal_harus_dibayar
+    decimal nominal_pembayaran
+    enum status_pembayaran
+    string bukti_pembayaran
+    string periode_pembayaran
+    enum metode_pembayaran
+    datetime waktu_entry
+}
+REKENING {
+    int id PK
+    string nama_rekening
+    string atas_nama
+    string no_rekening
+    bool tampil_invoice_broadband
+    bool tampil_invoice_corporate
+}
+POIN_SALDO {
+    int id PK
+    int id_warga FK
+    int saldo_poin
+    datetime diperbarui
+}
+POIN_PENGATURAN {
+    int id PK
+    string nama_poin
+    string ketentuan_poin
+    int total_poin
+    text keterangan
+    int id_lokasi FK
+}
+POIN_HADIAH {
+    int id PK
+    string nama_hadiah
+    int total_poin
+    text keterangan
+    int jumlah_stok
+    string foto_hadiah
+    int id_lokasi FK
+}
+POIN_PENUKARAN {
+    int id PK
+    int id_warga FK
+    int id_hadiah FK
+    int total_poin_ditukar
+    datetime waktu_pengajuan
+    enum status_pengajuan
+    enum status_pengambilan
+    string foto_pengambilan
+    string nama_penyerah
+    datetime waktu_penyerahan
+}
+OLT {
+    int id PK
+    string nama_olt
+    int id_lokasi FK
+    enum vendor "ZTE|HUAWEI|HSGQ|HIOSO|C-DATA"
+    string model
+    string host
+    int port_telnet
+    string username_telnet
+    string password_telnet "PLAINTEXT (temuan)"
+    int port_snmp
+    string snmp_community
+    enum snmp_version "1|2c"
+}
+PERANGKAT_PASIF {
+    int id PK
+    enum jns_perangkat "ODP|ODC|OLT|SPLITTER|SWITCH|OTB|JOINT CLOSURE|..."
+    string nama
+    string merek_model
+    string sn
+    int id_olt FK
+    int id_odc FK "self-reference"
+    int id_tiang FK
+    int id_lokasi FK
+    text lokasi
+    string titik_lokasi
+    int max_pelanggan
+    int jml_pelanggan_sekarang
+    string port1
+    string port2
+    string warna_kabel
+    string foto_lokasi
+}
+TIANG {
+    int id PK
+    string kode_tiang
+    string nama_tiang
+    string titik_lokasi
+    text lokasi_tiang
+    string foto_tiang
+    int id_lokasi FK
+}
+ANTENA {
+    int id PK
+    string mac
+    string ip
+    string ssid
+    string password "PLAINTEXT (temuan)"
+    string freq
+    string channel
+    text lokasi
+    text keterangan
+}
+TUNNEL {
+    int id PK
+    string nama_tunnel
+    string user
+    int id_router FK
+}
+GENIEACS {
+    int id PK
+    string nama_genieacs
+    string ip_address
+}
+TICKET {
+    int id PK
+    int id_warga FK "nullable untuk tipe General"
+    int id_lokasi FK
+    enum tipe_laporan "Pelanggan|General"
+    enum jns_laporan "21 jenis: Gangguan, Edukasi, Installasi, ..."
+    string nama_laporan
+    datetime waktu_masuk
+    datetime waktu_keluar
+    int durasi_menit
+    text kendala
+    text aksi_perbaikan
+    string foto
+    text keterangan
+    enum status "Dalam Penanganan|Permintaan Aktivasi|Jadwal Pemasangan|Pemasangan Berhasil|Pemasangan Gagal|Pending|Closed"
+    int id_teknisi1 FK
+    int id_teknisi2 FK
+    decimal nominal
+}
+TICKET_DETAIL {
+    int id PK
+    int id_ticket FK
+    text keterangan
+    string foto
+    enum status
+    int diperbarui_oleh FK
+    datetime waktu_update
+}
+INSTALLASI {
+    int id PK
+    int id_warga FK
+    int id_ticket FK
+    int id_olt FK
+    int id_odc FK
+    int id_odp FK
+}
+NOTIFIKASI_TEMPLATE {
+    int id PK
+    string nama_notifikasi
+    text header
+    text footer
+    enum link
+    string tgl_mengingatkan
+    string waktu_mengingatkan
+    enum tipe_mengingatkan
+    enum target_pelanggan
+}
+PENGUMUMAN {
+    int id PK
+    string nama_pengumuman
+    text isi_pengumuman
+    enum media
+    enum filter_target "Semua|Lokasi|Beberapa Pelanggan|Belum Lunas|..."
+    int id_lokasi_detail FK
+    int id_tipe_pembayaran FK
+    int id_sales FK
+    int id_router FK
+    int id_odp FK
+    int id_odc FK
+    int id_olt FK
+    string bulan_filter
+}
+PAYMENT_GATEWAY {
+    int id PK
+    enum metode "Join e-Billing|Private"
+    enum jenis "XENDIT|MOOTA|TRIPAY|DUITKU|PAKARDIGITAL"
+    enum status
+    enum beban_biaya "Pelanggan|Perusahaan"
+    string password "PLAINTEXT (temuan)"
+    string privatekey
+    string merchantcode
+    string pin
+    string email_api
+    string pass_api "PLAINTEXT (temuan)"
+    decimal biaya_admin
+}
+LOG_AKTIVITAS {
+    int id PK
+    string nama_log
+    int id_pengguna FK
+    string nama_pengguna
+    datetime waktu
+}
+
+LOKASI ||--o| PERUSAHAAN_PROFIL : "profil perusahaan"
+LOKASI ||--o{ ROUTER : "memiliki"
+LOKASI ||--o{ WARGA : "domisili"
+LOKASI ||--o{ TIPE_PEMBAYARAN : "menjual"
+LOKASI ||--o{ PERANGKAT_PASIF : "berada di"
+LOKASI ||--o{ TIANG : "berada di"
+LOKASI ||--o{ OLT : "berada di"
+LOKASI ||--o{ POIN_PENGATURAN : "berlaku di"
+LOKASI ||--o{ POIN_HADIAH : "tersedia di"
+ROUTER ||--o{ WARGA : "dilayani"
+ROUTER ||--o{ TIPE_PEMBAYARAN : "profil"
+ROUTER ||--o| TUNNEL : "jalur"
+TIPE_PEMBAYARAN ||--o{ WARGA : "paket aktif"
+TIPE_PEMBAYARAN ||--o{ LANGGANAN : "dipakai"
+WARGA ||--o{ WARGA : "sales/atasan"
+WARGA ||--o{ LANGGANAN : "berlangganan"
+WARGA ||--o{ TAGIHAN : "ditagih"
+WARGA ||--o{ PEMBAYARAN : "membayar"
+WARGA ||--o{ DEPOSIT : "menyetor"
+WARGA ||--o{ DISKON : "mendapat"
+WARGA ||--o| POIN_SALDO : "punya"
+WARGA ||--o{ POIN_PENUKARAN : "menukar"
+POIN_HADIAH ||--o{ POIN_PENUKARAN : "ditukar"
+WARGA ||--o{ TICKET : "melaporkan"
+TICKET ||--o{ TICKET_DETAIL : "riwayat"
+TICKET ||--o| INSTALLASI : "menghasilkan"
+WARGA ||--o{ INSTALLASI : "dipasang"
+OLT ||--o{ PERANGKAT_PASIF : "menaungi"
+PERANGKAT_PASIF ||--o{ PERANGKAT_PASIF : "ODC ke ODP"
+TIANG ||--o{ PERANGKAT_PASIF : "menopang"
+OLT ||--o{ INSTALLASI : "port"
+PERANGKAT_PASIF ||--o{ INSTALLASI : "titik sambung"
+REKENING ||--o{ PEMBAYARAN : "diterima di"
+REKENING ||--o{ DEPOSIT : "diterima di"
+DISKON }o--o| TIPE_PEMBAYARAN : "berlaku untuk"
+PENGUMUMAN }o--o| LOKASI : "target"
+PENGUMUMAN }o--o| TIPE_PEMBAYARAN : "target paket"
+PENGUMUMAN }o--o| WARGA : "target sales"
+NOTIFIKASI_TEMPLATE ||--o{ PENGUMUMAN : "template pesan"
+WARGA ||--o{ LOG_AKTIVITAS : "pelaku"

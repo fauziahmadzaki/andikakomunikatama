@@ -1,0 +1,365 @@
+%% MURANET ERD v2 — Billing, Payments & Double-Entry Finance
+%% PostgreSQL, UUID primary keys, single company.
+%% Reference entities from core: BRANCHES, CUSTOMERS, EMPLOYEES, SUBSCRIPTIONS.
+
+erDiagram
+    BRANCHES {
+        uuid id PK
+        varchar code UK
+        varchar name
+    }
+
+    CUSTOMERS {
+        uuid id PK
+        varchar customer_number UK
+        varchar full_name
+    }
+
+    EMPLOYEES {
+        uuid id PK
+        varchar employee_number UK
+        varchar full_name
+    }
+
+    SUBSCRIPTIONS {
+        uuid id PK
+        uuid customer_id FK
+        uuid plan_id FK
+        varchar status
+    }
+
+    BANK_ACCOUNTS {
+        uuid id PK
+        uuid branch_id FK
+        varchar name
+        varchar account_number UK
+        varchar account_holder
+        boolean is_visible_broadband
+        boolean is_visible_corporate
+        numeric opening_balance
+        boolean is_active
+    }
+
+    ACCOUNT_TYPES {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar normal_balance
+    }
+
+    CHART_OF_ACCOUNTS {
+        uuid id PK
+        uuid account_type_id FK
+        uuid parent_id FK
+        varchar code UK
+        varchar name
+        boolean is_active
+    }
+
+    JOURNAL_ENTRIES {
+        uuid id PK
+        uuid branch_id FK
+        varchar entry_number UK
+        date entry_date
+        text description
+        varchar source_type
+        uuid source_id
+        varchar status
+        uuid posted_by FK
+        timestamptz posted_at
+    }
+
+    JOURNAL_LINES {
+        uuid id PK
+        uuid journal_entry_id FK
+        uuid account_id FK
+        numeric debit
+        numeric credit
+        text memo
+    }
+
+    INVOICES {
+        uuid id PK
+        uuid branch_id FK
+        uuid customer_id FK
+        uuid subscription_id FK
+        varchar invoice_number UK
+        date period_start
+        date period_end
+        date issue_date
+        date due_date
+        numeric subtotal
+        numeric discount_total
+        numeric tax_total
+        numeric total
+        numeric paid_amount
+        varchar status
+        text notes
+        uuid issued_by FK
+        timestamptz issued_at
+    }
+
+    INVOICE_ITEMS {
+        uuid id PK
+        uuid invoice_id FK
+        varchar item_type
+        varchar reference_type
+        uuid reference_id
+        varchar description
+        numeric quantity
+        numeric unit_price
+        numeric discount_amount
+        numeric tax_amount
+        numeric total
+    }
+
+    PAYMENTS {
+        uuid id PK
+        uuid branch_id FK
+        uuid customer_id FK
+        uuid bank_account_id FK
+        uuid verified_by FK
+        varchar payment_number UK
+        varchar payment_method
+        numeric amount
+        varchar status
+        timestamptz paid_at
+        timestamptz verified_at
+        varchar external_reference
+        text notes
+    }
+
+    PAYMENT_ALLOCATIONS {
+        uuid id PK
+        uuid payment_id FK
+        uuid invoice_id FK
+        numeric amount
+    }
+
+    PAYMENT_PROOFS {
+        uuid id PK
+        uuid payment_id FK
+        uuid file_id FK
+        uuid uploaded_by FK
+        timestamptz uploaded_at
+    }
+
+    DEPOSITS {
+        uuid id PK
+        uuid customer_id FK
+        varchar deposit_type
+        numeric balance
+        varchar status
+    }
+
+    DEPOSIT_TRANSACTIONS {
+        uuid id PK
+        uuid deposit_id FK
+        varchar transaction_type
+        numeric amount
+        varchar reference_type
+        uuid reference_id
+        timestamptz occurred_at
+        text notes
+    }
+
+    SALES_DEPOSITS {
+        uuid id PK
+        uuid employee_id FK
+        uuid bank_account_id FK
+        uuid proof_file_id FK
+        uuid verified_by FK
+        date period_start
+        date period_end
+        numeric amount_due
+        numeric amount_paid
+        varchar status
+        timestamptz verified_at
+        text notes
+    }
+
+    PAYMENT_GATEWAY_CONFIGS {
+        uuid id PK
+        varchar provider
+        varchar merchant_code
+        varchar secret_ref
+        varchar fee_bearer
+        boolean is_active
+    }
+
+    PAYMENT_GATEWAY_TRANSACTIONS {
+        uuid id PK
+        uuid payment_id FK
+        uuid payment_gateway_config_id FK
+        varchar provider
+        varchar external_id
+        varchar status
+        numeric amount
+        numeric fee_amount
+        jsonb callback_payload
+        timestamptz created_at
+    }
+
+    INCOMES {
+        uuid id PK
+        uuid branch_id FK
+        uuid bank_account_id FK
+        uuid contact_id FK
+        uuid journal_entry_id FK
+        uuid proof_file_id FK
+        uuid created_by FK
+        varchar income_type
+        numeric amount
+        text description
+        timestamptz received_at
+    }
+
+    EXPENSES {
+        uuid id PK
+        uuid branch_id FK
+        uuid bank_account_id FK
+        uuid contact_id FK
+        uuid journal_entry_id FK
+        uuid proof_file_id FK
+        uuid created_by FK
+        varchar expense_type
+        numeric amount
+        text description
+        timestamptz paid_at
+    }
+
+    PETTY_CASH_FUNDS {
+        uuid id PK
+        uuid bank_account_id FK
+        uuid custodian_employee_id FK
+        varchar fund_number UK
+        numeric amount
+        numeric used_amount
+        numeric balance
+        varchar status
+    }
+
+    PETTY_CASH_EXPENSES {
+        uuid id PK
+        uuid fund_id FK
+        uuid contact_id FK
+        uuid attachment_file_id FK
+        numeric amount
+        text description
+        timestamptz spent_at
+        varchar status
+    }
+
+    REIMBURSEMENTS {
+        uuid id PK
+        uuid bank_account_id FK
+        uuid contact_id FK
+        uuid journal_entry_id FK
+        uuid attachment_file_id FK
+        uuid requested_by FK
+        uuid approved_by FK
+        varchar reimbursement_number UK
+        numeric amount
+        text description
+        varchar status
+        timestamptz paid_at
+    }
+
+    PAYMENT_REQUESTS {
+        uuid id PK
+        uuid bank_account_id FK
+        uuid contact_id FK
+        uuid journal_entry_id FK
+        uuid attachment_file_id FK
+        uuid requested_by FK
+        uuid approved_by FK
+        varchar request_number UK
+        numeric amount
+        text description
+        varchar status
+        timestamptz paid_at
+    }
+
+    CONTACTS {
+        uuid id PK
+        varchar contact_type
+        varchar name
+        varchar email
+        varchar phone
+        varchar company
+        numeric balance
+        boolean is_active
+    }
+
+    PURCHASE_ORDERS {
+        uuid id PK
+        uuid contact_id FK
+        uuid created_by FK
+        uuid approved_by FK
+        varchar po_number UK
+        date order_date
+        date expected_date
+        varchar status
+        numeric total_amount
+        text notes
+    }
+
+    PURCHASE_ORDER_ITEMS {
+        uuid id PK
+        uuid purchase_order_id FK
+        varchar description
+        numeric quantity
+        numeric unit_price
+        numeric tax_amount
+        numeric total
+    }
+
+    BRANCHES ||--o{ BANK_ACCOUNTS : "owns"
+    BRANCHES ||--o{ INVOICES : "issues"
+    BRANCHES ||--o{ PAYMENTS : "receives"
+    BRANCHES ||--o{ INCOMES : "records"
+    BRANCHES ||--o{ EXPENSES : "records"
+    BRANCHES ||--o{ JOURNAL_ENTRIES : "posts"
+
+    CUSTOMERS ||--o{ INVOICES : "billed"
+    CUSTOMERS ||--o{ PAYMENTS : "pays"
+    CUSTOMERS ||--o| DEPOSITS : "holds"
+    SUBSCRIPTIONS ||--o{ INVOICES : "generates"
+
+    INVOICES ||--o{ INVOICE_ITEMS : "contains"
+    PAYMENTS ||--o{ PAYMENT_ALLOCATIONS : "allocated"
+    INVOICES ||--o{ PAYMENT_ALLOCATIONS : "settled_by"
+    PAYMENTS ||--o{ PAYMENT_PROOFS : "attaches"
+    DEPOSITS ||--o{ DEPOSIT_TRANSACTIONS : "moves"
+    EMPLOYEES ||--o{ SALES_DEPOSITS : "settles"
+    BANK_ACCOUNTS ||--o{ SALES_DEPOSITS : "deposited_to"
+
+    BANK_ACCOUNTS ||--o{ PAYMENTS : "receives"
+    BANK_ACCOUNTS ||--o{ INCOMES : "receives"
+    BANK_ACCOUNTS ||--o{ EXPENSES : "pays"
+    BANK_ACCOUNTS ||--o{ PETTY_CASH_FUNDS : "funds"
+    BANK_ACCOUNTS ||--o{ REIMBURSEMENTS : "pays"
+    BANK_ACCOUNTS ||--o{ PAYMENT_REQUESTS : "pays"
+
+    PAYMENT_GATEWAY_CONFIGS ||--o{ PAYMENT_GATEWAY_TRANSACTIONS : "processes"
+    PAYMENTS ||--o{ PAYMENT_GATEWAY_TRANSACTIONS : "via"
+
+    ACCOUNT_TYPES ||--o{ CHART_OF_ACCOUNTS : "classifies"
+    CHART_OF_ACCOUNTS ||--o{ CHART_OF_ACCOUNTS : "parent_of"
+    CHART_OF_ACCOUNTS ||--o{ JOURNAL_LINES : "posted_to"
+    JOURNAL_ENTRIES ||--o{ JOURNAL_LINES : "contains"
+    JOURNAL_ENTRIES ||--o| INCOMES : "records"
+    JOURNAL_ENTRIES ||--o| EXPENSES : "records"
+    JOURNAL_ENTRIES ||--o| PAYMENTS : "records"
+    JOURNAL_ENTRIES ||--o| REIMBURSEMENTS : "records"
+    JOURNAL_ENTRIES ||--o| PAYMENT_REQUESTS : "records"
+
+    CONTACTS ||--o{ INCOMES : "receives"
+    CONTACTS ||--o{ EXPENSES : "paid_to"
+    CONTACTS ||--o{ PETTY_CASH_EXPENSES : "paid_to"
+    CONTACTS ||--o{ REIMBURSEMENTS : "paid_to"
+    CONTACTS ||--o{ PAYMENT_REQUESTS : "paid_to"
+    CONTACTS ||--o{ PURCHASE_ORDERS : "supplies"
+
+    PETTY_CASH_FUNDS ||--o{ PETTY_CASH_EXPENSES : "spends"
+    PURCHASE_ORDERS ||--o{ PURCHASE_ORDER_ITEMS : "contains"
