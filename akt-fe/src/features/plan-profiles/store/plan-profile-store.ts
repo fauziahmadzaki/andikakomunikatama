@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUUID } from "@/lib/uuid";
 
 import { seedPlanProfiles, seedRouterIpPools } from "../data/seed";
 import type { PlanProfile, RouterIpPool, SavePlanProfileInput } from "../data/types";
@@ -15,7 +16,7 @@ type PlanProfileState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function today() {

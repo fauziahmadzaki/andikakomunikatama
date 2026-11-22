@@ -6,6 +6,8 @@ import { seedEmployees, type Employee } from "../data/employees";
 import { defaultRolePermissions } from "../data/permissions";
 import { localUsers, type LocalUser, type UserRole } from "../data/users";
 
+import { generateUUID } from "@/lib/uuid";
+
 type UsersState = {
   users: LocalUser[];
   employees: Employee[];
@@ -18,7 +20,7 @@ type UsersState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function audit(action: string, entityId: string, description: string, branch: string) {

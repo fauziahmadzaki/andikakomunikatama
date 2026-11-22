@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { generateUUID } from "@/lib/uuid";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -243,7 +244,7 @@ export function useCustomerWizard() {
   }));
   const [error, setError] = useState<string | null>(null);
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
-  const [draftId] = useState(() => crypto.randomUUID());
+  const [draftId] = useState(() => generateUUID());
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   const [provinces, setProvinces] = useState<Region[]>([]);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import "@/lib/uuid";
 import { PrototypeProvider } from "@/components/providers/PrototypeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 

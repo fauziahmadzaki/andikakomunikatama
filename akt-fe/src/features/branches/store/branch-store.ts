@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { seedBranches, type Branch } from "../data/branches";
 
+import { generateUUID } from "@/lib/uuid";
+
 type BranchState = {
   branches: Branch[];
   fetchBranches: () => Promise<void>;
@@ -15,7 +17,7 @@ type BranchState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function audit(action: string, entityId: string, description: string, branch: string) {
