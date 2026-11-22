@@ -188,6 +188,12 @@ export const navigationGroups: NavGroup[] = [
         permission: "user.read",
       },
       {
+      {
+        title: "Telegram",
+        href: "/dashboard/pengaturan/telegram",
+        permission: "system.manage",
+      },
+      {
         title: "Role & akses",
         href: "/dashboard/pengaturan/role",
         permission: "role.manage",
