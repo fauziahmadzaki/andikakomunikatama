@@ -49,6 +49,11 @@ export const navigationGroups: NavGroup[] = [
         href: "/dashboard/pengaturan/pengguna",
         permission: "user.read",
       },
+      {
+        title: "Telegram",
+        href: "/dashboard/pengaturan/telegram",
+        permission: "system.manage",
+      },
     ],
   },
 ];

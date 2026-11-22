@@ -10,19 +10,10 @@ import { env } from './core/config.js';
 export const app = express();
 
 // Security and utility middlewares
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(
   cors({
-    origin:
-      env.NODE_ENV === 'development'
-        ? (origin, callback) => {
-            if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
-              callback(null, true);
-            } else {
-              callback(new Error('Not allowed by CORS'));
-            }
-          }
-        : env.CLIENT_URL,
+    origin: true,
     credentials: true,
   })
 );
