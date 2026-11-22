@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUUID } from "@/lib/uuid";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { seedAdapters, seedLogs } from "../data/seed";
@@ -14,7 +15,7 @@ type IntegrationState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 export const useIntegrationStore = create<IntegrationState>()(

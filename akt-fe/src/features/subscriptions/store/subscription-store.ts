@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUUID } from "@/lib/uuid";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { usePlanProfileStore } from "@/features/plan-profiles/store/plan-profile-store";
@@ -59,7 +60,7 @@ type SubscriptionState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function now() {

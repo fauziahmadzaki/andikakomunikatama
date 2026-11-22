@@ -99,8 +99,10 @@ type NetworkState = {
   resetNetwork: () => void;
 };
 
+import { generateUUID } from "@/lib/uuid";
+
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function now() {

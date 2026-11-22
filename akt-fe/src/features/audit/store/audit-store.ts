@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 
 import { seedAuditLogs, type AuditLog } from "../data/audit";
 
+import { generateUUID } from "@/lib/uuid";
+
 type AuditInput = Omit<AuditLog, "id" | "createdAt"> & {
   createdAt?: string;
 };
@@ -14,7 +16,7 @@ type AuditState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 export const useAuditStore = create<AuditState>()(

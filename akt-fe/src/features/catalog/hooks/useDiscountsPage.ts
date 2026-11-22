@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { generateUUID } from "@/lib/uuid";
 import { toast } from "sonner";
 
 import { useBranchStore } from "@/features/branches/store/branch-store";
@@ -33,7 +34,7 @@ export type DiscountForm = {
 
 function newScope(planId = ""): DiscountScopeForm {
   return {
-    key: crypto.randomUUID(),
+    key: generateUUID(),
     scopeType: "all",
     branchId: "br-jkt",
     planId,

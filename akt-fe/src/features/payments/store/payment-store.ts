@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUUID } from "@/lib/uuid";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { seedPayments, seedReconciliation } from "../data/seed";
@@ -22,7 +23,7 @@ type PaymentsState = {
 };
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function audit(action: string, entityId: string, description: string) {

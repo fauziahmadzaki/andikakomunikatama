@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { generateUUID } from "@/lib/uuid";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { useAuthStore } from "@/features/auth/store/auth-store";
@@ -95,7 +96,7 @@ function today() {
 }
 
 function id() {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 function actorName(actor?: string) {
