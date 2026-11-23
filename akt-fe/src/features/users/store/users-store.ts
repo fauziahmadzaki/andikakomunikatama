@@ -2,9 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
-import { seedEmployees, type Employee } from "../data/employees";
-import { defaultRolePermissions } from "../data/permissions";
-import { localUsers, type LocalUser, type UserRole } from "../data/users";
+import type { Employee } from "../data/employees";
+import type { LocalUser, UserRole } from "../data/users";
 
 import { generateUUID } from "@/lib/uuid";
 
@@ -37,9 +36,9 @@ function audit(action: string, entityId: string, description: string, branch: st
 export const useUsersStore = create<UsersState>()(
   persist(
     (set, get) => ({
-      users: localUsers,
-      employees: seedEmployees,
-      rolePermissions: defaultRolePermissions,
+      users: [],
+      employees: [],
+      rolePermissions: {} as Record<UserRole, string[]>,
 
       addUser: (input) => {
         const user: LocalUser = {
@@ -100,12 +99,12 @@ export const useUsersStore = create<UsersState>()(
 
       resetUsers: () => {
         set({
-          users: localUsers,
-          employees: seedEmployees,
-          rolePermissions: defaultRolePermissions,
+          users: [],
+          employees: [],
+          rolePermissions: {} as Record<UserRole, string[]>,
         });
       },
     }),
-    { name: "muranet-users", skipHydration: true }
+    { name: "muranet-users-v2", skipHydration: true }
   )
 );

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
-import { seedBranches, type Branch } from "../data/branches";
+import type { Branch } from "../data/branches";
 
 import { generateUUID } from "@/lib/uuid";
 
@@ -34,7 +34,7 @@ function audit(action: string, entityId: string, description: string, branch: st
 export const useBranchStore = create<BranchState>()(
   persist(
     (set, get) => ({
-      branches: seedBranches,
+      branches: [],
 
       fetchBranches: async () => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
@@ -172,8 +172,8 @@ export const useBranchStore = create<BranchState>()(
         return { ok: true };
       },
 
-      resetBranches: () => set({ branches: seedBranches }),
+      resetBranches: () => set({ branches: [] }),
     }),
-    { name: "muranet-branches", skipHydration: true }
+    { name: "muranet-branches-v2", skipHydration: true }
   )
 );

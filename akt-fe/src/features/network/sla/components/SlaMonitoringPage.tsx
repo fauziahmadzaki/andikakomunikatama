@@ -21,24 +21,8 @@ import { useSlaWebAlerts } from "../hooks/useSlaWebAlerts";
 import type { MonitoringTarget, TargetSlaSummary } from "../types";
 
 export function SlaMonitoringPage() {
-  const [items, setItems] = useState<TargetSlaSummary[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const cached = localStorage.getItem("sla_targets_cache");
-      if (cached) return JSON.parse(cached) as TargetSlaSummary[];
-    } catch {
-      // ignore parse errors
-    }
-    return [];
-  });
-  const [loading, setLoading] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return !localStorage.getItem("sla_targets_cache");
-    } catch {
-      return true;
-    }
-  });
+  const [items, setItems] = useState<TargetSlaSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -67,11 +51,6 @@ export function SlaMonitoringPage() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setItems(json.data);
-        try {
-          localStorage.setItem("sla_targets_cache", JSON.stringify(json.data));
-        } catch {
-          // ignore storage errors
-        }
       }
     } catch (err) {
       console.warn("Gagal fetch monitoring targets:", err);

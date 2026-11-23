@@ -3,20 +3,6 @@ import { persist } from "zustand/middleware";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
 import { useSubscriptionStore } from "@/features/subscriptions/store/subscription-store";
-import {
-  seedAcs,
-  seedAntennas,
-  seedInventory,
-  seedMovements,
-  seedOlts,
-  seedPassiveDevices,
-  seedPoles,
-  seedRouterHotspotUsers,
-  seedRouterPppoeSecrets,
-  seedRouterQueues,
-  seedRouters,
-  seedTunnels,
-} from "../data/seed";
 import type {
   AcsServer,
   Antenna,
@@ -128,18 +114,18 @@ function audit(
 export const useNetworkStore = create<NetworkState>()(
   persist(
     (set, get) => ({
-      routers: seedRouters,
-      routerQueues: seedRouterQueues,
-      pppoeSecrets: seedRouterPppoeSecrets,
-      hotspotUsers: seedRouterHotspotUsers,
-      olts: seedOlts,
-      acsServers: seedAcs,
-      passiveDevices: seedPassiveDevices,
-      poles: seedPoles,
-      antennas: seedAntennas,
-      tunnels: seedTunnels,
-      inventory: seedInventory,
-      movements: seedMovements,
+      routers: [],
+      routerQueues: [],
+      pppoeSecrets: [],
+      hotspotUsers: [],
+      olts: [],
+      acsServers: [],
+      passiveDevices: [],
+      poles: [],
+      antennas: [],
+      tunnels: [],
+      inventory: [],
+      movements: [],
 
       fetchRouters: async () => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
@@ -332,7 +318,6 @@ export const useNetworkStore = create<NetworkState>()(
           console.warn("Backend test router failed:", err);
         }
 
-        // Fallback local simulation if backend unreachable
         const fallbackSuccess = router?.status !== "maintenance";
         const fallbackMsg = fallbackSuccess
           ? `Koneksi router ${router?.name ?? routerId} berhasil.`
@@ -487,11 +472,7 @@ export const useNetworkStore = create<NetworkState>()(
           return;
         }
         const usedPorts =
-          device.usedPorts ??
-          Array.from(
-            { length: device.usedCapacity },
-            (_, index) => index + 1
-          );
+          device.usedPorts ?? [];
         if (usedPorts.includes(port)) {
           return;
         }
@@ -649,9 +630,7 @@ export const useNetworkStore = create<NetworkState>()(
                   ...inventoryItem,
                   status: statusMap[input.type],
                   branchId:
-                    input.toBranchId ??
-                    input.fromBranchId ??
-                    inventoryItem.branchId,
+                    input.toBranchId ?? input.fromBranchId ?? inventoryItem.branchId,
                 }
               : inventoryItem
           ),
@@ -700,64 +679,24 @@ export const useNetworkStore = create<NetworkState>()(
 
       resetNetwork: () => {
         set({
-          routers: seedRouters,
-          routerQueues: seedRouterQueues,
-          pppoeSecrets: seedRouterPppoeSecrets,
-          hotspotUsers: seedRouterHotspotUsers,
-          olts: seedOlts,
-          acsServers: seedAcs,
-          passiveDevices: seedPassiveDevices,
-          poles: seedPoles,
-          antennas: seedAntennas,
-          tunnels: seedTunnels,
-          inventory: seedInventory,
-          movements: seedMovements,
+          routers: [],
+          routerQueues: [],
+          pppoeSecrets: [],
+          hotspotUsers: [],
+          olts: [],
+          acsServers: [],
+          passiveDevices: [],
+          poles: [],
+          antennas: [],
+          tunnels: [],
+          inventory: [],
+          movements: [],
         });
       },
     }),
     {
-      name: "muranet-network-v2",
+      name: "muranet-network-v3",
       skipHydration: true,
-      version: 2,
-      migrate: (persistedState) => {
-        const state = (persistedState ?? {}) as Partial<NetworkState>;
-        const existingDevices = Array.isArray(state.passiveDevices)
-          ? state.passiveDevices
-          : [];
-        const existingIds = new Set(
-          existingDevices.map((device) => device.id)
-        );
-        const missingDevices = seedPassiveDevices.filter(
-          (device) => !existingIds.has(device.id)
-        );
-        const seedById = new Map(
-          seedPassiveDevices.map((device) => [device.id, device])
-        );
-        const normalizedDevices = existingDevices.map((device) => {
-          const seed = seedById.get(device.id);
-          return seed
-            ? {
-                ...device,
-                parentDeviceId: device.parentDeviceId ?? seed.parentDeviceId,
-                usedPorts: device.usedPorts ?? seed.usedPorts,
-              }
-            : device;
-        });
-
-        return {
-          ...state,
-          routerQueues: Array.isArray(state.routerQueues)
-            ? state.routerQueues
-            : seedRouterQueues,
-          pppoeSecrets: Array.isArray(state.pppoeSecrets)
-            ? state.pppoeSecrets
-            : seedRouterPppoeSecrets,
-          hotspotUsers: Array.isArray(state.hotspotUsers)
-            ? state.hotspotUsers
-            : seedRouterHotspotUsers,
-          passiveDevices: [...normalizedDevices, ...missingDevices],
-        } as NetworkState;
-      },
     }
   )
 );
