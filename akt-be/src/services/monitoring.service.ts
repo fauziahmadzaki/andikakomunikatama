@@ -433,7 +433,11 @@ export class MonitoringService {
 
       for (const client of clients) {
         totalScanned++;
-        const targetName = `PPPoE - ${client.username}`;
+        const secretName = client.username;
+        const commentTrimmed = client.comment?.trim();
+        const targetName = commentTrimmed
+          ? `${secretName}-${commentTrimmed}`
+          : `${'customer_pppoe'}-${secretName}`;
 
         // Cek apakah sudah ada target dengan IP atau nama yang sama
         if (existingHostMap.has(client.address) || existingNameMap.has(targetName.toLowerCase())) {

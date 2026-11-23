@@ -11,6 +11,7 @@ import { ActionIconButton } from "@/components/shared/ActionIconButton";
 import {
   DataTable,
   type DataTableColumn,
+  type DataTableSelection,
 } from "@/components/shared/DataTable";
 import { StatusBadge, type StatusTone } from "@/components/shared/StatusBadge";
 import { UptimeKumaBar } from "./UptimeKumaBar";
@@ -34,6 +35,8 @@ const typeLabels: Record<TargetType, string> = {
   switch: "Switch",
   server: "Server",
   customer_pppoe: "PPPoE",
+  customer_antena: "Pelanggan Antena",
+  customer_dedicated: "Pelanggan Dedicated",
   other: "Device",
 };
 
@@ -45,6 +48,7 @@ export function SlaTargetsTable({
   onDelete,
   syncingId,
   deletingId,
+  selection,
 }: {
   items: TargetSlaSummary[];
   onViewScript: (target: MonitoringTarget) => void;
@@ -53,6 +57,7 @@ export function SlaTargetsTable({
   onDelete: (target: MonitoringTarget) => void;
   syncingId: string | null;
   deletingId: string | null;
+  selection?: DataTableSelection;
 }) {
   const columns: DataTableColumn<TargetSlaSummary>[] = [
     {
@@ -167,6 +172,7 @@ export function SlaTargetsTable({
       getRowKey={(row) => row.target.id}
       ariaLabel="Daftar monitoring target SLA"
       emptyMessage="Tidak ada target monitoring yang cocok dengan filter."
+      selection={selection}
     />
   );
 }

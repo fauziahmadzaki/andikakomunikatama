@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { PlusIcon, RefreshCwIcon, SearchIcon, BellIcon, SendIcon } from "lucide-react";
+import { PlusIcon, RefreshCwIcon, SearchIcon, BellIcon, SendIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/shared/SelectField";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { ConfirmationDialog } from "@/components/shared/ConfirmationDialog";
 import { SlaTargetsTable } from "./SlaTargetsTable";
 import { AddTargetDialog } from "./AddTargetDialog";
 import { SyncPppoeDialog } from "./SyncPppoeDialog";
@@ -20,12 +21,32 @@ import { useSlaWebAlerts } from "../hooks/useSlaWebAlerts";
 import type { MonitoringTarget, TargetSlaSummary } from "../types";
 
 export function SlaMonitoringPage() {
-  const [items, setItems] = useState<TargetSlaSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<TargetSlaSummary[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = localStorage.getItem("sla_targets_cache");
+      if (cached) return JSON.parse(cached) as TargetSlaSummary[];
+    } catch {
+      // ignore parse errors
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("sla_targets_cache");
+    } catch {
+      return true;
+    }
+  });
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [routerFilter, setRouterFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -46,6 +67,11 @@ export function SlaMonitoringPage() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setItems(json.data);
+        try {
+          localStorage.setItem("sla_targets_cache", JSON.stringify(json.data));
+        } catch {
+          // ignore storage errors
+        }
       }
     } catch (err) {
       console.warn("Gagal fetch monitoring targets:", err);
@@ -87,10 +113,12 @@ export function SlaMonitoringPage() {
 
       const matchRouter =
         routerFilter === "all" || item.target.routerId === routerFilter;
+      const matchType =
+        typeFilter === "all" || item.target.type === typeFilter;
 
-      return matchSearch && matchStatus && matchRouter;
+      return matchSearch && matchStatus && matchRouter && matchType;
     });
-  }, [items, query, statusFilter, routerFilter]);
+  }, [items, query, statusFilter, routerFilter, typeFilter]);
 
   // Pagination
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
@@ -122,6 +150,26 @@ export function SlaMonitoringPage() {
         value: id,
         label: name,
       })),
+    ];
+  }, [items]);
+
+  const typeOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    const typeLabels: Record<string, string> = {
+      gateway: "Gateway",
+      olt: "OLT",
+      switch: "Switch",
+      server: "Server",
+      customer_pppoe: "PPPoE",
+      other: "Device",
+    };
+    items.forEach((i) => {
+      const t = i.target.type;
+      if (t) map.set(t, typeLabels[t] || t);
+    });
+    return [
+      { value: "all", label: "Semua tipe" },
+      ...Array.from(map.entries()).map(([value, label]) => ({ value, label })),
     ];
   }, [items]);
 
@@ -166,6 +214,40 @@ export function SlaMonitoringPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedKeys.size === 0) return;
+    setBulkDeleting(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+    const ids = Array.from(selectedKeys);
+    let successCount = 0;
+    let failCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${apiUrl}/monitoring/targets/${id}`, {
+          method: "DELETE",
+        });
+        const json = await res.json();
+        if (json.success) {
+          successCount += 1;
+        } else {
+          failCount += 1;
+        }
+      } catch {
+        failCount += 1;
+      }
+    }
+    if (successCount > 0) {
+      toast.success(`${successCount} target monitoring dihapus.`);
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} target gagal dihapus.`);
+    }
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    setSelectedKeys(new Set());
+    fetchTargets(true);
   };
 
   return (
@@ -262,6 +344,7 @@ export function SlaMonitoringPage() {
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setCurrentPage(1);
+                  setSelectedKeys(new Set());
                 }}
               />
             </div>
@@ -272,6 +355,7 @@ export function SlaMonitoringPage() {
                 onValueChange={(value) => {
                   setRouterFilter(value);
                   setCurrentPage(1);
+                  setSelectedKeys(new Set());
                 }}
                 ariaLabel="Filter router"
                 options={routerOptions}
@@ -284,6 +368,7 @@ export function SlaMonitoringPage() {
                 onValueChange={(value) => {
                   setStatusFilter(value);
                   setCurrentPage(1);
+                  setSelectedKeys(new Set());
                 }}
                 ariaLabel="Filter status target"
                 options={[
@@ -294,7 +379,32 @@ export function SlaMonitoringPage() {
               />
             </div>
 
+            <div className="w-full lg:w-44">
+              <SelectField
+                value={typeFilter}
+                onValueChange={(value) => {
+                  setTypeFilter(value);
+                  setCurrentPage(1);
+                  setSelectedKeys(new Set());
+                }}
+                ariaLabel="Filter tipe monitoring"
+                options={typeOptions}
+              />
+            </div>
+
             <div className="flex items-center gap-2 lg:ml-auto">
+              {selectedKeys.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setBulkDeleteOpen(true)}
+                  isDisabled={bulkDeleting}
+                  className="h-9 gap-1.5 text-destructive hover:text-destructive"
+                >
+                  <Trash2Icon className="size-3.5" />
+                  Hapus ({selectedKeys.size})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -316,6 +426,11 @@ export function SlaMonitoringPage() {
             onDelete={handleDelete}
             syncingId={syncingId}
             deletingId={deletingId}
+            selection={{
+              selectedKeys,
+              allKeys: filteredItems.map((i) => i.target.id),
+              onSelectionChange: setSelectedKeys,
+            }}
           />
 
           <DataTablePagination
@@ -354,6 +469,16 @@ export function SlaMonitoringPage() {
         target={incidentTarget}
         open={Boolean(incidentTarget)}
         onClose={() => setIncidentTarget(null)}
+      />
+
+      <ConfirmationDialog
+        open={bulkDeleteOpen}
+        title={`Hapus ${selectedKeys.size} target monitoring?`}
+        description="Target terpilih akan dihapus beserta aturan Netwatch yang terkait di router (jika ada). Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        destructive
+        onConfirm={handleBulkDelete}
+        onCancel={() => setBulkDeleteOpen(false)}
       />
     </div>
   );

@@ -132,12 +132,11 @@ export class TelegramService {
     const channel = await this.getChannelById(id);
     const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const text = `🔔 <b>[TEST NOTIFIKASI AKT MONITORING]</b>
-━━━━━━━━━━━━━━━━━━━━
-Channel: <b>${channel.name}</b>
-Waktu: <code>${now} WIB</code>
-Status: ✅ <b>Koneksi Bot Telegram Berhasil!</b>
-━━━━━━━━━━━━━━━━━━━━
-<i>Sistem SLA Monitoring siap mengirimkan alert real-time ke channel ini.</i>`;
+Channel: ${channel.name}
+Waktu: ${now} WIB
+Status: Koneksi Bot Telegram berhasil.
+
+Sistem SLA Monitoring siap mengirim alert ke channel ini.`;
 
     return this.sendToTelegram(channel.botToken, channel.chatId, text, channel.threadId);
   }
@@ -155,16 +154,15 @@ Status: ✅ <b>Koneksi Bot Telegram Berhasil!</b>
     const targetChannels = activeChannels.filter((c) => c.notifyDown);
 
     const timeStr = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    const message = `🚨 <b>[ALERT] HOST DOWN DETECTED</b>
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>Target:</b> ${target.name}
-🌐 <b>IP/Host:</b> <code>${target.host}</code>
-🏷 <b>Tipe:</b> ${target.type.toUpperCase()}
-📡 <b>Router Monitor:</b> ${routerName || target.routerId}
-⏰ <b>Waktu Kejadian:</b> ${timeStr} WIB
-⚠️ <b>Status:</b> ❌ DOWN / Unreachable
-━━━━━━━━━━━━━━━━━━━━
-<i>Sistem monitoring otomatis mendeteksi kegagalan probe ICMP dari Netwatch.</i>`;
+    const message = `🚨 <b>[ALERT] HOST DOWN</b>
+Target: ${target.name}
+IP/Host: ${target.host}
+Tipe: ${target.type.toUpperCase()}
+Router Monitor: ${routerName || target.routerId}
+Waktu Kejadian: ${timeStr} WIB
+Status: DOWN / Tidak dapat dijangkau
+
+Terdeteksi kegagalan probe ICMP (Netwatch).`;
 
     let sentCount = 0;
 
@@ -211,17 +209,16 @@ Status: ✅ <b>Koneksi Bot Telegram Berhasil!</b>
       ? this.formatDuration(incident.durationSeconds)
       : 'Beberapa detik';
 
-    const message = `✅ <b>[RECOVERED] HOST NORMAL KEMBALI</b>
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>Target:</b> ${target.name}
-🌐 <b>IP/Host:</b> <code>${target.host}</code>
-🏷 <b>Tipe:</b> ${target.type.toUpperCase()}
-📡 <b>Router Monitor:</b> ${routerName || target.routerId}
-⏰ <b>Waktu Pulih:</b> ${timeStr} WIB
-⏱ <b>Total Downtime:</b> ${duration}
-🟢 <b>Status:</b> ✅ UP / Normal
-━━━━━━━━━━━━━━━━━━━━
-<i>Host telah merespons probe Netwatch kembali secara normal.</i>`;
+    const message = `✅ <b>[RECOVERED] HOST KEMBALI NORMAL</b>
+Target: ${target.name}
+IP/Host: ${target.host}
+Tipe: ${target.type.toUpperCase()}
+Router Monitor: ${routerName || target.routerId}
+Waktu Pulih: ${timeStr} WIB
+Total Downtime: ${duration}
+Status: UP / Normal
+
+Host kembali merespons probe Netwatch secara normal.`;
 
     let sentCount = 0;
 

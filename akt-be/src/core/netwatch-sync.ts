@@ -94,15 +94,21 @@ export async function syncNetwatchToRouter(
   try {
     await withTimeout(api.connect(), 2000, 'connect RouterOS');
 
-    // Clean up any existing rule with same comment or same host from our system
+    // If a netwatch entry for this host already exists, skip to avoid redundancy
     try {
       const list = await withTimeout(api.write('/tool/netwatch/print'), 1500, 'netwatch print');
       if (Array.isArray(list)) {
+        const existingForHost = list.find((item) => item['host'] === target.host);
+        if (existingForHost) {
+          await api.close();
+          return {
+            success: true,
+            message: `Netwatch untuk host ${target.host} sudah ada di ${router.name}, dilewati (tidak ada duplikasi).`,
+          };
+        }
+        // Clean up any existing rule with same comment from our system (legacy cleanup)
         for (const item of list) {
-          if (
-            item['.id'] &&
-            (item['comment'] === comment || (item['host'] === target.host && item['comment']?.startsWith('AKT-MON')))
-          ) {
+          if (item['.id'] && item['comment'] === comment) {
             await withTimeout(
               api.write('/tool/netwatch/remove', [`=.id=${item['.id']}`]),
               1500,
@@ -194,6 +200,7 @@ export interface RouterPppoeClient {
   address: string;
   callerId?: string;
   uptime?: string;
+  comment?: string;
 }
 
 export async function fetchPppoeClientsFromRouter(router: RouterEntity): Promise<RouterPppoeClient[]> {
@@ -215,32 +222,12 @@ export async function fetchPppoeClientsFromRouter(router: RouterEntity): Promise
   });
 
   const clients: RouterPppoeClient[] = [];
+  const secretMap = new Map<string, { address?: string; comment?: string }>();
 
   try {
     await withTimeout(api.connect(), 2000, 'connect RouterOS');
 
-    // 1. First check /ppp/active/print for currently online PPPoE sessions
-    try {
-      const active = await withTimeout(
-        api.write('/ppp/active/print', ['?service=pppoe']),
-        1500,
-        'ppp active print'
-      );
-      if (Array.isArray(active)) {
-        for (const p of active) {
-          if (p['name'] && p['address'] && p['address'] !== '0.0.0.0') {
-            clients.push({
-              username: p['name'],
-              address: p['address'],
-              callerId: p['caller-id'],
-              uptime: p['uptime'],
-            });
-          }
-        }
-      }
-    } catch {}
-
-    // 2. Also check /ppp/secret/print for static IP addresses configured
+    // 1) Collect PPPoE secrets (name, remote-address, comment)
     try {
       const secrets = await withTimeout(
         api.write('/ppp/secret/print', ['?service=pppoe']),
@@ -250,21 +237,58 @@ export async function fetchPppoeClientsFromRouter(router: RouterEntity): Promise
       if (Array.isArray(secrets)) {
         for (const s of secrets) {
           const username = s['name'];
+          if (!username || typeof username !== 'string') continue;
           const remoteAddress = s['remote-address'];
-          if (
-            username &&
-            remoteAddress &&
-            remoteAddress !== '0.0.0.0' &&
-            !clients.some((c) => c.username === username)
-          ) {
+          const rawComment = s['comment'];
+          const comment =
+            typeof rawComment === 'string' && rawComment.trim().length > 0
+              ? rawComment.trim()
+              : undefined;
+          secretMap.set(username, {
+            address:
+              remoteAddress && remoteAddress !== '0.0.0.0' ? String(remoteAddress) : undefined,
+            comment,
+          });
+        }
+      }
+    } catch {}
+
+    // 2) Active PPPoE sessions (prefer current address)
+    try {
+      const active = await withTimeout(
+        api.write('/ppp/active/print', ['?service=pppoe']),
+        1500,
+        'ppp active print'
+      );
+      if (Array.isArray(active)) {
+        for (const p of active) {
+          if (p['name'] && p['address'] && p['address'] !== '0.0.0.0') {
+            const username = String(p['name']);
+            const secret = secretMap.get(username);
             clients.push({
               username,
-              address: remoteAddress,
+              address: String(p['address']),
+              callerId: p['caller-id'] ? String(p['caller-id']) : undefined,
+              uptime: p['uptime'] ? String(p['uptime']) : undefined,
+              comment: secret?.comment,
             });
+            // Mark as handled by removing from consideration? We'll check by presence in clients.
+            secretMap.delete(username);
           }
         }
       }
     } catch {}
+
+    // 3) Add remaining secrets that were not active
+    for (const [username, info] of secretMap.entries()) {
+      if (info.address) {
+        clients.push({
+          username,
+          address: info.address,
+          comment: info.comment,
+        });
+      }
+    }
 
     await api.close();
   } catch (err: unknown) {

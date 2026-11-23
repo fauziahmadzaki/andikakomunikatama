@@ -111,6 +111,8 @@ export function AddTargetDialog({
     { value: "switch", label: "Switch Distribution" },
     { value: "server", label: "Server / DNS / NMS" },
     { value: "customer_pppoe", label: "Pelanggan PPPoE" },
+    { value: "customer_antena", label: "Pelanggan Antena" },
+    { value: "customer_dedicated", label: "Pelanggan Dedicated" },
     { value: "other", label: "Perangkat Lainnya" },
   ];
 

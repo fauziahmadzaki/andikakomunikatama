@@ -101,10 +101,11 @@ Konfigurasi bot dan channel Telegram dikelola secara aman melalui antarmuka web:
    - Tambah, edit, dan pantau status koneksi router via RouterOS API (Port 8728).
    - Pengujian koneksi live router.
 2. **Monitoring SLA Netwatch & Uptime Kuma** (`/dashboard/jaringan/sla`)
-   - Otomatis membuat rule `/tool netwatch` di router MikroTik saat target ditambahkan.
+   - Otomatis membuat rule `/tool netwatch` di router MikroTik saat target ditambahkan (jika host sudah ada di Netwatch, proses penambahan dilewati untuk menghindari duplikasi).
+   - Tipe target: Gateway, OLT, Switch, Server, Pelanggan PPPoE, Pelanggan Antena, Pelanggan Dedicated, dan lainnya.
    - Sinkronisasi massal seluruh pelanggan PPPoE aktif menjadi target monitoring (otomatis skip jika sudah ada).
    - Tampilan bar Uptime Kuma (30 menit terakhir hingga `now`) yang bergeser setiap 60 detik.
-   - Notifikasi insiden DOWN & pemulihan UP ke Telegram dan Web Push Notification (SSE).
+   - Notifikasi insiden DOWN dan pemulihan UP ke Telegram serta Web Push Notification (SSE).
 3. **Pengelolaan Cabang** (`/dashboard/pengaturan/cabang`)
    - Manajemen kantor cabang dan alokasi router.
 4. **Pengelolaan Pengguna** (`/dashboard/pengaturan/pengguna`)

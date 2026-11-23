@@ -4,6 +4,8 @@ export type TargetType =
   | 'switch'
   | 'server'
   | 'customer_pppoe'
+  | 'customer_antena'
+  | 'customer_dedicated'
   | 'other';
 
 export interface UptimeBarItem {

@@ -1,16 +1,10 @@
 import { app } from './app.js';
 import { env } from './core/config.js';
 import { pool } from './core/db.js';
-import { seed } from './core/seed.js';
 import { logger } from './utils/logger.js';
 
-const server = app.listen(env.PORT, async () => {
+const server = app.listen(env.PORT, () => {
   logger.info(`🚀 Server running on http://localhost:${env.PORT} in ${env.NODE_ENV} mode`);
-  try {
-    await seed();
-  } catch (err) {
-    logger.warn('Seed execution notice:', err);
-  }
 });
 
 const gracefulShutdown = async (signal: string) => {

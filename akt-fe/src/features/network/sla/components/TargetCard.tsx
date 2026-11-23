@@ -30,6 +30,8 @@ const typeLabels: Record<TargetType, { label: string; icon: React.ComponentType<
   switch: { label: "Switch", icon: ActivityIcon },
   server: { label: "Server", icon: ServerIcon },
   customer_pppoe: { label: "PPPoE", icon: UserCheckIcon },
+  customer_antena: { label: "Pelanggan Antena", icon: UserCheckIcon },
+  customer_dedicated: { label: "Pelanggan Dedicated", icon: UserCheckIcon },
   other: { label: "Device", icon: GlobeIcon },
 };
 
