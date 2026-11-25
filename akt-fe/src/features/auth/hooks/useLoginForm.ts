@@ -30,7 +30,7 @@ export function useLoginForm() {
       router.replace("/dashboard");
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Email/ID atau kata sandi salah.";
+        err instanceof Error ? err.message : "Username/email atau kata sandi salah.";
       form.setError("root.server", { message });
     }
   }

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,11 +11,19 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLoginForm } from "@/features/auth/hooks/useLoginForm";
 
 export function LoginForm() {
   const { register, handleSubmit, errors, isSubmitting, onSubmit } = useLoginForm();
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form
@@ -23,12 +33,12 @@ export function LoginForm() {
     >
       <FieldGroup>
         <Field data-invalid={Boolean(errors.identifier)}>
-          <FieldLabel htmlFor="identifier">Email atau ID karyawan</FieldLabel>
+          <FieldLabel htmlFor="identifier">Username atau email</FieldLabel>
           <Input
             id="identifier"
             type="text"
             autoComplete="username"
-            placeholder="nama@muranet.id"
+            placeholder="username atau email"
             aria-invalid={Boolean(errors.identifier)}
             aria-describedby={
               errors.identifier ? "identifier-error" : undefined
@@ -50,15 +60,38 @@ export function LoginForm() {
               Lupa kata sandi?
             </Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby={errors.password ? "password-error" : undefined}
-            {...register("password")}
-          />
+          <InputGroup>
+            <InputGroupInput
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? "password-error" : undefined}
+              {...register("password")}
+            />
+            <InputGroupAddon align="inline-end">
+              <TooltipTrigger>
+                <InputGroupButton
+                  type="button"
+                  size="icon-sm"
+                  aria-label={
+                    showPassword
+                      ? "Sembunyikan kata sandi"
+                      : "Tampilkan kata sandi"
+                  }
+                  onPress={() => setShowPassword((value) => !value)}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </InputGroupButton>
+                <Tooltip>
+                  {showPassword
+                    ? "Sembunyikan kata sandi"
+                    : "Tampilkan kata sandi"}
+                </Tooltip>
+              </TooltipTrigger>
+            </InputGroupAddon>
+          </InputGroup>
           <FieldError id="password-error">{errors.password?.message}</FieldError>
         </Field>
       </FieldGroup>
@@ -72,12 +105,6 @@ export function LoginForm() {
       <Button type="submit" className="w-full" isDisabled={isSubmitting}>
         {isSubmitting ? "Memproses..." : "Masuk"}
       </Button>
-
-      <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
-        Demo: <span className="font-medium">admin / admin123</span> ·{" "}
-        <span className="font-medium">cs / cs123456</span> ·{" "}
-        <span className="font-medium">teknisi / teknisi123</span>
-      </p>
     </form>
   );
 }
