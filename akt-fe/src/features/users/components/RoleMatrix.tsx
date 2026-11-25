@@ -61,7 +61,10 @@ export function RoleMatrix() {
                           <input
                             type="checkbox"
                             aria-label={`${permission.label} untuk ${roleLabels[role]}`}
-                            checked={draft[role].includes(permission.code)}
+                            checked={
+                              role === "admin" ||
+                              (draft[role]?.includes(permission.code) ?? false)
+                            }
                             disabled={role === "admin"}
                             onChange={() => toggle(role, permission.code)}
                             className="size-4 rounded border-input accent-primary disabled:opacity-60"

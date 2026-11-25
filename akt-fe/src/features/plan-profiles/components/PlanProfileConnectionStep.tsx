@@ -21,6 +21,8 @@ export function PlanProfileConnectionStep({
   routers,
   pools,
   parentQueues,
+  queuesLoading,
+  queuesMessage,
   router,
   selectedPool,
   selectedParentQueue,
@@ -30,6 +32,8 @@ export function PlanProfileConnectionStep({
   routers: Router[];
   pools: RouterIpPool[];
   parentQueues: { id: string; name: string; maxLimit?: string }[];
+  queuesLoading?: boolean;
+  queuesMessage?: string;
   router: Router | undefined;
   selectedPool: RouterIpPool | undefined;
   selectedParentQueue: { id: string; name: string; maxLimit?: string } | undefined;
@@ -89,9 +93,11 @@ export function PlanProfileConnectionStep({
           onValueChange={(value) => set("parentQueueId", value)}
           ariaLabel="Parent queue paket"
           placeholder={
-            parentQueues.length === 0
-              ? "Belum ada parent queue"
-              : "Pilih parent queue"
+            queuesLoading
+              ? "Memuat queue dari router..."
+              : parentQueues.length === 0
+                ? "Belum ada queue"
+                : "Pilih parent queue"
           }
           options={parentQueues.map((queue) => ({
             value: queue.id,
@@ -101,9 +107,18 @@ export function PlanProfileConnectionStep({
           }))}
         />
         <FieldDescription>
-          Queue induk di router yang menaungi paket ini.
+          Queue dibaca langsung dari router dan sifatnya opsional.
         </FieldDescription>
       </Field>
+
+      {queuesMessage ? (
+        <p
+          role="alert"
+          className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400"
+        >
+          {queuesMessage}
+        </p>
+      ) : null}
 
       {selectedParentQueue ? (
         <div className="rounded-lg border bg-muted/30 p-3 text-sm">

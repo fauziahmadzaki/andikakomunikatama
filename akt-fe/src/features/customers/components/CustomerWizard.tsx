@@ -124,8 +124,7 @@ export function CustomerWizard() {
     branch,
     router,
     routerOptions,
-    parentQueues,
-    selectedParentQueue,
+    isSubmitting,
     branchOdcs,
     odcOdps,
     availableOdpPorts,
@@ -636,66 +635,29 @@ export function CustomerWizard() {
                       }))}
                     />
                     <FieldDescription>
-                      Data diambil dari simulasi router, bukan integrasi
-                      MikroTik langsung.
+                      Data diambil langsung dari router melalui backend.
                     </FieldDescription>
                   </div>
                 ) : null}
 
-                <div className="space-y-1.5 sm:col-span-2">
-                  <p className="text-sm font-medium">Parent queue</p>
-                  <SelectField
-                    value={form.parentQueueId}
-                    onValueChange={(value) => set("parentQueueId", value)}
-                    ariaLabel="Parent queue"
-                    placeholder={
-                      parentQueues.length === 0
-                        ? "Belum ada parent queue di router ini"
-                        : "Pilih parent queue"
-                    }
-                    options={parentQueues.map((queue) => ({
-                      value: queue.id,
-                      label: queue.maxLimit
-                        ? `${queue.name} — ${queue.maxLimit}`
-                        : queue.name,
-                    }))}
-                  />
-                </div>
-
                 {form.connectionType === "static" ? (
-                  <>
-                    <Field>
-                      <FieldLabel htmlFor="queue-name">
-                        Nama pelanggan (comment queue)
-                      </FieldLabel>
-                      <Input
-                        id="queue-name"
-                        value={form.queueName}
-                        onChange={(event) =>
-                          set("queueName", event.target.value)
-                        }
-                      />
-                      <FieldDescription>
-                        Dipakai sebagai komentar simple queue di router.
-                      </FieldDescription>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="target-ip">
-                        IP address pelanggan
-                      </FieldLabel>
-                      <Input
-                        id="target-ip"
-                        value={form.targetIp}
-                        placeholder="10.10.40.10"
-                        onChange={(event) =>
-                          set("targetIp", event.target.value)
-                        }
-                      />
-                      <FieldDescription>
-                        Target IP untuk simple queue pelanggan.
-                      </FieldDescription>
-                    </Field>
-                  </>
+                  <Field>
+                    <FieldLabel htmlFor="target-ip">
+                      IP address pelanggan
+                    </FieldLabel>
+                    <Input
+                      id="target-ip"
+                      value={form.targetIp}
+                      placeholder="10.10.40.10"
+                      onChange={(event) =>
+                        set("targetIp", event.target.value)
+                      }
+                    />
+                    <FieldDescription>
+                      Target IP untuk simple queue pelanggan. Nama queue
+                      otomatis memakai ID dan nama pelanggan.
+                    </FieldDescription>
+                  </Field>
                 ) : null}
               </div>
             </div>
@@ -1056,8 +1018,8 @@ export function CustomerWizard() {
                 />
                 <SummaryItem label="Paket" value={plan?.name} />
                 <SummaryItem
-                  label="Parent queue"
-                  value={selectedParentQueue?.name}
+                  label="Parent queue paket"
+                  value={plan?.parentQueueName}
                 />
                 <SummaryItem
                   label="Data sinkronisasi"
@@ -1072,8 +1034,14 @@ export function CustomerWizard() {
                 {form.connectionType === "static" ? (
                   <>
                     <SummaryItem
-                      label="Comment queue"
-                      value={form.queueName}
+                      label="Nama queue"
+                      value={
+                        form.provisionMethod === "sync"
+                          ? syncSources.find(
+                              (item) => item.id === form.syncSourceId
+                            )?.username
+                          : `${form.customerNumber}-${form.fullName}`
+                      }
                     />
                     <SummaryItem
                       label="Target IP"
@@ -1221,9 +1189,9 @@ export function CustomerWizard() {
                 <ArrowRightIcon />
               </Button>
             ) : (
-              <Button onPress={submit}>
+              <Button onPress={submit} isDisabled={isSubmitting}>
                 <SaveIcon />
-                Simpan pelanggan
+                {isSubmitting ? "Menyimpan..." : "Simpan pelanggan"}
               </Button>
             )}
           </div>

@@ -25,15 +25,23 @@ import type {
   RegistrationType,
 } from "@/features/customers/data/types";
 import { useCustomerStore } from "@/features/customers/store/customer-store";
+import type { RouterQueue } from "@/features/network/data/types";
 import { useNetworkStore } from "@/features/network/store/network-store";
 import { usePlanProfileStore } from "@/features/plan-profiles/store/plan-profile-store";
-import { useSubscriptionStore } from "@/features/subscriptions/store/subscription-store";
 import type {
   ConnectionType,
   IncentiveMethod,
   ProvisionMethod,
 } from "@/features/subscriptions/data/types";
 import { useUsersStore } from "@/features/users/store/users-store";
+import { apiClient } from "@/lib/api-client";
+
+type SyncSourceOption = {
+  id: string;
+  username: string;
+  label: string;
+  targetIp: string;
+};
 
 type WizardForm = {
   registrationType: RegistrationType;
@@ -67,8 +75,6 @@ type WizardForm = {
   provisionMethod: ProvisionMethod;
   connectionType: ConnectionType;
   planId: string;
-  parentQueueId: string;
-  queueName: string;
   targetIp: string;
   syncSourceId: string;
 
@@ -113,13 +119,6 @@ function isValidIpv4(value: string) {
     value.split(".").every((part) => Number(part) >= 0 && Number(part) <= 255);
 }
 
-function slug(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.+|\.+$/g, "");
-}
-
 function planTypeFor(connectionType: ConnectionType) {
   if (connectionType === "pppoe") {
     return "pppoe" as const;
@@ -144,29 +143,22 @@ export function useCustomerWizard() {
   const contacts = useCustomerStore((state) => state.contacts);
   const identities = useCustomerStore((state) => state.identities);
   const drafts = useCustomerStore((state) => state.drafts);
-  const createCustomer = useCustomerStore((state) => state.createCustomer);
-  const addContact = useCustomerStore((state) => state.addContact);
+  const registerCustomer = useCustomerStore((state) => state.registerCustomer);
   const saveDraftToStore = useCustomerStore((state) => state.saveDraft);
   const deleteDraft = useCustomerStore((state) => state.deleteDraft);
-  const addSubscription = useSubscriptionStore(
-    (state) => state.addSubscription
-  );
-  const addService = useSubscriptionStore((state) => state.addService);
-  const addCredential = useSubscriptionStore((state) => state.addCredential);
   const branches = useBranchStore((state) => state.branches);
+  const fetchBranches = useBranchStore((state) => state.fetchBranches);
   const employees = useUsersStore((state) => state.employees);
   const packages = usePlanProfileStore((state) => state.profiles);
+  const fetchPlanProfiles = usePlanProfileStore(
+    (state) => state.fetchPlanProfiles
+  );
   const routers = useNetworkStore((state) => state.routers);
-  const routerQueues = useNetworkStore((state) => state.routerQueues);
-  const pppoeSecrets = useNetworkStore((state) => state.pppoeSecrets);
-  const hotspotUsers = useNetworkStore((state) => state.hotspotUsers);
-  const olts = useNetworkStore((state) => state.olts);
+  const fetchRouters = useNetworkStore((state) => state.fetchRouters);
   const passiveDevices = useNetworkStore((state) => state.passiveDevices);
-  const addRouterQueue = useNetworkStore((state) => state.addRouterQueue);
-  const occupyOdpPort = useNetworkStore((state) => state.occupyOdpPort);
 
   const activeBranches = branches.filter((item) => item.isActive);
-  const defaultBranchId = activeBranches[0]?.id ?? "br-jkt";
+  const defaultBranchId = activeBranches[0]?.id ?? "";
   const defaultRouter = routers.find(
     (item) => item.branchId === defaultBranchId && item.status === "active"
   );
@@ -215,13 +207,6 @@ export function useCustomerWizard() {
             item.type === "pppoe"
         )?.id ?? ""
       : "",
-    parentQueueId: defaultRouter
-      ? routerQueues.find(
-          (queue) =>
-            queue.routerId === defaultRouter.id && queue.kind === "parent"
-        )?.id ?? ""
-      : "",
-    queueName: "",
     targetIp: "",
     syncSourceId: "",
 
@@ -246,11 +231,116 @@ export function useCustomerWizard() {
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
   const [draftId] = useState(() => generateUUID());
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [queueState, setQueueState] = useState<{
+    routerId: string;
+    queues: RouterQueue[];
+    message: string;
+  }>({ routerId: "", queues: [], message: "" });
+  const [syncState, setSyncState] = useState<{
+    key: string;
+    sources: SyncSourceOption[];
+  }>({ key: "", sources: [] });
 
   const [provinces, setProvinces] = useState<Region[]>([]);
   const [regencies, setRegencies] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<Region[]>([]);
   const [villages, setVillages] = useState<Region[]>([]);
+
+  useEffect(() => {
+    fetchBranches();
+    fetchRouters();
+    fetchPlanProfiles();
+  }, [fetchBranches, fetchPlanProfiles, fetchRouters]);
+
+  useEffect(() => {
+    if (!form.routerId) {
+      return;
+    }
+
+    let active = true;
+    const routerId = form.routerId;
+
+    apiClient
+      .get<{
+        data: { connected: boolean; message: string; queues: RouterQueue[] };
+      }>(`/routers/${routerId}/queues`)
+      .then((response) => {
+        if (!active) return;
+        setQueueState({
+          routerId,
+          queues: response.data.data.queues ?? [],
+          message: response.data.data.connected
+            ? ""
+            : response.data.data.message,
+        });
+      })
+      .catch((err) => {
+        if (!active) return;
+        setQueueState({
+          routerId,
+          queues: [],
+          message:
+            err instanceof Error ? err.message : "Gagal mengambil queue router.",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [form.routerId]);
+
+  useEffect(() => {
+    if (
+      !form.routerId ||
+      (form.connectionType !== "pppoe" && form.connectionType !== "hotspot")
+    ) {
+      return;
+    }
+
+    let active = true;
+    const routerId = form.routerId;
+    const connectionType = form.connectionType;
+    const key = `${routerId}:${connectionType}`;
+    const path =
+      connectionType === "pppoe"
+        ? `/routers/${routerId}/pppoe-secrets`
+        : `/routers/${routerId}/hotspot-users`;
+
+    apiClient
+      .get<{
+        data: {
+          connected: boolean;
+          message: string;
+          users: Array<{
+            id: string;
+            username: string;
+            profile: string;
+            comment?: string;
+          }>;
+        };
+      }>(path)
+      .then((response) => {
+        if (!active) return;
+        setSyncState({
+          key,
+          sources: (response.data.data.users ?? []).map((item) => ({
+            id: item.id,
+            username: item.username,
+            label: `${item.username} — ${item.comment ?? item.profile ?? "tanpa komentar"}`,
+            targetIp: "",
+          })),
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setSyncState({ key, sources: [] });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [form.connectionType, form.routerId]);
 
   useEffect(() => {
     let active = true;
@@ -316,12 +406,9 @@ export function useCustomerWizard() {
       ),
     [form.branchId, routers]
   );
-  const parentQueues = useMemo(
-    () =>
-      routerQueues.filter(
-        (queue) => queue.routerId === form.routerId && queue.kind === "parent"
-      ),
-    [form.routerId, routerQueues]
+  const queues = useMemo(
+    () => (queueState.routerId === form.routerId ? queueState.queues : []),
+    [form.routerId, queueState]
   );
   const connectionPlanType = planTypeFor(form.connectionType);
   const planOptions = useMemo(
@@ -334,51 +421,25 @@ export function useCustomerWizard() {
       ),
     [connectionPlanType, form.routerId, packages]
   );
-  const syncSources = useMemo(() => {
-    if (form.connectionType === "pppoe") {
-      return pppoeSecrets
-        .filter((item) => item.routerId === form.routerId)
-        .map((item) => ({
-          id: item.id,
-          username: item.username,
-          label: `${item.username} — ${item.comment ?? "tanpa komentar"}`,
-          targetIp: "",
-        }));
+  const syncKey = `${form.routerId}:${form.connectionType}`;
+  const syncSources = useMemo<SyncSourceOption[]>(() => {
+    if (form.connectionType === "pppoe" || form.connectionType === "hotspot") {
+      return syncState.key === syncKey ? syncState.sources : [];
     }
-    if (form.connectionType === "hotspot") {
-      return hotspotUsers
-        .filter((item) => item.routerId === form.routerId)
-        .map((item) => ({
-          id: item.id,
-          username: item.username,
-          label: `${item.username} — ${item.comment ?? "tanpa komentar"}`,
-          targetIp: "",
-        }));
-    }
-    return routerQueues
-      .filter(
-        (queue) => queue.routerId === form.routerId && queue.kind === "simple"
-      )
+
+    return queues
+      .filter((queue) => queue.kind === "simple")
       .map((queue) => ({
         id: queue.id,
         username: queue.name,
         label: `${queue.name} — ${queue.comment ?? "tanpa komentar"}`,
         targetIp: queue.target ?? "",
       }));
-  }, [
-    form.connectionType,
-    form.routerId,
-    hotspotUsers,
-    pppoeSecrets,
-    routerQueues,
-  ]);
+  }, [form.connectionType, queues, syncKey, syncState]);
 
   const plan = packages.find((item) => item.id === form.planId);
   const branch = branches.find((item) => item.id === form.branchId);
   const selectedRouter = routers.find((item) => item.id === form.routerId);
-  const selectedParentQueue = routerQueues.find(
-    (queue) => queue.id === form.parentQueueId
-  );
   const branchOdcs = passiveDevices.filter(
     (device) => device.branchId === form.branchId && device.type === "odc"
   );
@@ -426,14 +487,6 @@ export function useCustomerWizard() {
     );
   }
 
-  function firstParentQueueId(routerId: string) {
-    return (
-      routerQueues.find(
-        (queue) => queue.routerId === routerId && queue.kind === "parent"
-      )?.id ?? ""
-    );
-  }
-
   const duplicates = useMemo(() => {
     const phone = normalizePhone(form.phone);
     const identity = form.identityNumber.replace(/\D/g, "");
@@ -461,20 +514,7 @@ export function useCustomerWizard() {
   }, [contacts, customers, form.identityNumber, form.phone, identities]);
 
   function set<K extends keyof WizardForm>(key: K, value: WizardForm[K]) {
-    setForm((current) => {
-      const next = { ...current, [key]: value } as WizardForm;
-
-      if (
-        key === "fullName" &&
-        (current.connectionType === "static" ||
-          current.connectionType === "dhcp") &&
-        (!current.queueName || current.queueName === current.fullName)
-      ) {
-        next.queueName = String(value);
-      }
-
-      return next;
-    });
+    setForm((current) => ({ ...current, [key]: value }) as WizardForm);
     setError(null);
   }
 
@@ -614,7 +654,6 @@ export function useCustomerWizard() {
       planId: nextRouter
         ? firstPlanId(nextRouter.id, current.connectionType)
         : "",
-      parentQueueId: nextRouter ? firstParentQueueId(nextRouter.id) : "",
       syncSourceId: "",
       odcId: "",
       odpId: "",
@@ -628,27 +667,20 @@ export function useCustomerWizard() {
       ...current,
       routerId,
       planId: firstPlanId(routerId, current.connectionType),
-      parentQueueId: firstParentQueueId(routerId),
       syncSourceId: "",
-      queueName: "",
       targetIp: "",
     }));
     setError(null);
   }
 
   function selectConnectionType(connectionType: ConnectionType) {
-    setForm((current) => {
-      const staticLike =
-        connectionType === "static" || connectionType === "dhcp";
-      return {
-        ...current,
-        connectionType,
-        planId: firstPlanId(current.routerId, connectionType),
-        syncSourceId: "",
-        queueName: staticLike ? current.fullName : "",
-        targetIp: "",
-      };
-    });
+    setForm((current) => ({
+      ...current,
+      connectionType,
+      planId: firstPlanId(current.routerId, connectionType),
+      syncSourceId: "",
+      targetIp: "",
+    }));
     setError(null);
   }
 
@@ -657,12 +689,6 @@ export function useCustomerWizard() {
       ...current,
       provisionMethod,
       syncSourceId: "",
-      queueName:
-        provisionMethod === "new" &&
-        (current.connectionType === "static" ||
-          current.connectionType === "dhcp")
-          ? current.fullName
-          : "",
       targetIp: "",
     }));
     setError(null);
@@ -673,7 +699,6 @@ export function useCustomerWizard() {
     setForm((current) => ({
       ...current,
       syncSourceId: sourceId,
-      queueName: source?.username ?? current.queueName,
       targetIp: source?.targetIp ?? current.targetIp,
     }));
     setError(null);
@@ -725,14 +750,8 @@ export function useCustomerWizard() {
         return "Nomor identitas wajib diisi.";
       }
       const identity = form.identityNumber.replace(/\D/g, "");
-      if (form.identityType === "ktp" && identity.length !== 16) {
-        return "NIK KTP harus 16 digit.";
-      }
-      if (form.identityType === "sim" && identity.length < 8) {
-        return "Nomor SIM minimal 8 digit.";
-      }
-      if (form.identityType === "ktm" && identity.length < 8) {
-        return "Nomor KTM minimal 8 digit.";
+      if (form.identityType !== "passport" && identity.length < 8) {
+        return "Nomor identitas minimal 8 digit.";
       }
     }
     if (current === 2) {
@@ -753,16 +772,10 @@ export function useCustomerWizard() {
       if (!form.planId) {
         return "Paket wajib dipilih sesuai jenis koneksi.";
       }
-      if (!form.parentQueueId) {
-        return "Parent queue wajib dipilih.";
-      }
       if (form.provisionMethod === "sync" && !form.syncSourceId) {
         return "Pilih data yang akan disinkronkan.";
       }
       if (form.connectionType === "static") {
-        if (!form.queueName.trim()) {
-          return "Nama pelanggan untuk comment queue wajib diisi.";
-        }
         if (!isValidIpv4(form.targetIp)) {
           return "IP address pelanggan untuk simple queue tidak valid.";
         }
@@ -836,7 +849,7 @@ export function useCustomerWizard() {
     toast.success("Draft dimuat.");
   }
 
-  function submit() {
+  async function submit() {
     for (const currentStep of [1, 2, 3, 5]) {
       const message = validateStep(currentStep);
       if (message) {
@@ -855,28 +868,32 @@ export function useCustomerWizard() {
     }
 
     const source = syncSources.find((item) => item.id === form.syncSourceId);
-    const staticLike =
-      form.connectionType === "static" || form.connectionType === "dhcp";
-    const generatedUsername = `${slug(form.fullName) || "pelanggan"}.${
-      form.customerNumber.slice(-4)
-    }`;
-    const serviceUsername =
-      form.provisionMethod === "sync" && source
-        ? source.username
-        : staticLike
-          ? form.queueName || form.fullName
-          : generatedUsername;
+    const installation = {
+      snOnu: form.snOnu || undefined,
+      onuSerial: form.onuSerial || undefined,
+      onuBrand: form.onuBrand || undefined,
+      odc: selectedOdc?.code,
+      odp: selectedOdp?.code,
+      odpPort: form.odpPort || undefined,
+      cableLengthM: form.cableLength ? Number(form.cableLength) : undefined,
+      connectorCount: form.connectorCount
+        ? Number(form.connectorCount)
+        : undefined,
+      materialNotes: form.materialNotes || undefined,
+    };
 
-    const customer = createCustomer({
-      customerNumber: form.customerNumber.trim(),
-      registrationType: form.registrationType,
-      registeredAt: form.registrationDate,
-      fullName: form.fullName,
-      customerType: form.customerType,
-      status: "active",
-      branchId: form.branchId,
-      salesEmployeeId: form.salesEmployeeId || undefined,
-      notes: form.notes,
+    const payload = {
+      customer: {
+        customerNumber: form.customerNumber.trim() || undefined,
+        branchId: form.branchId,
+        salesEmployeeId: form.salesEmployeeId || undefined,
+        fullName: form.fullName.trim(),
+        customerType: form.customerType,
+        registrationType: form.registrationType,
+        status: "active" as const,
+        registeredAt: form.registrationDate,
+        notes: form.notes,
+      },
       address: {
         addressType: form.addressType,
         addressLine: form.addressLine,
@@ -893,12 +910,24 @@ export function useCustomerWizard() {
         longitude: form.longitude ? Number(form.longitude) : undefined,
         isPrimary: true,
       },
-      contact: {
-        contactType,
-        value: form.phone,
-        isPrimary: true,
-        isVerified: false,
-      },
+      contacts: [
+        {
+          contactType,
+          value: form.phone,
+          isPrimary: true,
+          isVerified: false,
+        },
+        ...(form.phoneAlt.trim()
+          ? [
+              {
+                contactType: "phone" as const,
+                value: form.phoneAlt.trim(),
+                isPrimary: false,
+                isVerified: false,
+              },
+            ]
+          : []),
+      ],
       identity: {
         identityType: form.identityType,
         identityNumber: form.identityNumber,
@@ -909,99 +938,64 @@ export function useCustomerWizard() {
         phone: form.phone,
         isActive: true,
       },
-    });
-
-    if (form.phoneAlt.trim()) {
-      addContact({
-        customerId: customer.id,
-        contactType: "phone",
-        value: form.phoneAlt.trim(),
-        isPrimary: false,
-        isVerified: false,
-      });
-    }
-
-    const subscription = addSubscription({
-      customerId: customer.id,
-      planId: plan.id,
-      branchId: branch.id,
-      salesEmployeeId: form.salesEmployeeId || undefined,
-      status: "active",
-      startDate: form.registrationDate,
-      dueDay: Number(form.dueDay),
-      prorateEnabled: false,
-      taxEnabled: form.taxEnabled,
-      priceSnapshot: price,
-      incentiveMethod: form.incentiveMethod,
-      incentiveValue:
-        form.incentiveMethod === "none"
-          ? 0
-          : Number(form.incentiveValue) || 0,
-    });
-
-    const olt = olts.find((item) => item.branchId === branch.id);
-    const service = addService({
-      subscriptionId: subscription.id,
-      serviceType: form.connectionType,
-      username: serviceUsername,
-      routerId: form.routerId,
-      oltId: olt?.id,
-      planProfileId: plan.id,
-      connectionType: form.connectionType,
-      provisionMethod: form.provisionMethod,
-      parentQueueId: form.parentQueueId,
-      parentQueueName: selectedParentQueue?.name,
-      queueName: form.queueName || undefined,
-      targetIp: form.targetIp || undefined,
-      syncSourceId: form.syncSourceId || undefined,
-      installation: {
-        snOnu: form.snOnu || undefined,
-        onuSerial: form.onuSerial || undefined,
-        onuBrand: form.onuBrand || undefined,
-        odc: selectedOdc?.code,
-        odp: selectedOdp?.code,
-        odpPort: form.odpPort || undefined,
-        cableLengthM: form.cableLength ? Number(form.cableLength) : undefined,
-        connectorCount: form.connectorCount
-          ? Number(form.connectorCount)
-          : undefined,
-        materialNotes: form.materialNotes || undefined,
+      subscription: {
+        planId: plan.id,
+        dueDay: Number(form.dueDay),
+        startDate: form.registrationDate,
+        prorateEnabled: false,
+        taxEnabled: form.taxEnabled,
+        incentiveMethod: form.incentiveMethod,
+        incentiveValue:
+          form.incentiveMethod === "none"
+            ? 0
+            : Number(form.incentiveValue) || 0,
       },
-      status: "active",
-      installedAt: form.registrationDate,
-    });
-
-    if (
-      form.connectionType === "pppoe" ||
-      form.connectionType === "hotspot"
-    ) {
-      addCredential({
-        serviceId: service.id,
-        credentialType: form.connectionType,
-        username: serviceUsername,
-        secretRef: `secret/service/${service.id}`,
-        isActive: true,
-      });
-    }
-
-    if (staticLike && form.provisionMethod === "new") {
-      addRouterQueue({
+      service: {
+        connectionType: form.connectionType,
+        provisionMethod: form.provisionMethod,
         routerId: form.routerId,
-        name: form.queueName || serviceUsername,
-        kind: "simple",
-        target: form.targetIp || undefined,
-        comment: form.fullName,
-        maxLimit: `${plan.downloadMbps}M/${plan.uploadMbps}M`,
-      });
-    }
+        targetIp: form.targetIp || undefined,
+        syncSourceId: form.syncSourceId || undefined,
+        username:
+          form.provisionMethod === "sync" && source
+            ? source.username
+            : undefined,
+        installation,
+      },
+      overrideDuplicate,
+    };
 
-    if (selectedOdp && form.odpPort) {
-      occupyOdpPort(selectedOdp.id, Number(form.odpPort));
-    }
+    setIsSubmitting(true);
 
-    deleteDraft(draftId);
-    toast.success("Pelanggan berhasil didaftarkan.");
-    router.push(`/dashboard/pelanggan/${customer.id}`);
+    try {
+      const result = await registerCustomer(payload);
+      const sync = result.routerSync;
+
+      deleteDraft(draftId);
+
+      if (sync && !sync.success) {
+        toast.warning(
+          `Pelanggan tersimpan, tetapi provisioning router gagal: ${sync.message}`,
+          { duration: 8000 }
+        );
+      } else if (result.provisioning) {
+        toast.success(
+          `Pelanggan terdaftar. Username: ${result.provisioning.username} / Password: ${result.provisioning.password}`,
+          { duration: 12000 }
+        );
+      } else {
+        toast.success("Pelanggan berhasil didaftarkan.");
+      }
+
+      router.push(`/dashboard/pelanggan/${result.customerId}`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Gagal mendaftarkan pelanggan.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return {
@@ -1024,8 +1018,7 @@ export function useCustomerWizard() {
     branch,
     router: selectedRouter,
     routerOptions: branchRouters,
-    parentQueues,
-    selectedParentQueue,
+    isSubmitting,
     branchOdcs,
     odcOdps,
     availableOdpPorts,

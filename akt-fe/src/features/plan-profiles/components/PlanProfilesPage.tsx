@@ -28,10 +28,12 @@ export function PlanProfilesPage() {
     poolName,
     queueName,
     toggle,
+    sync,
     confirmDelete,
     canCreate,
     canEdit,
     canViewDiscounts,
+    isLoading,
     editProfile,
   } = usePlanProfilesPage();
 
@@ -117,7 +119,9 @@ export function PlanProfilesPage() {
             routerName={routerName}
             poolName={poolName}
             queueName={queueName}
+            isLoading={isLoading}
             onEdit={canEdit ? editProfile : undefined}
+            onSync={sync}
             onToggle={toggle}
             onDelete={(profile) => setConfirmProfile(profile)}
           />

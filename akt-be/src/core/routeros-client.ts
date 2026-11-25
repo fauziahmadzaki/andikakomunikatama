@@ -365,3 +365,289 @@ export async function fetchRealRouterTelemetry(params: {
     };
   }
 }
+
+export interface RouterQueueData {
+  id: string;
+  routerId: string;
+  name: string;
+  kind: 'parent' | 'simple';
+  target?: string;
+  comment?: string;
+  maxLimit?: string;
+}
+
+export interface RouterQueuesResult {
+  connected: boolean;
+  message: string;
+  queues: RouterQueueData[];
+}
+
+/**
+ * Reads queue list directly from a live MikroTik router.
+ * Simple queues are mapped to `simple`; queue trees become `parent`.
+ */
+export async function fetchRouterQueues(params: {
+  routerId: string;
+  host: string;
+  apiPort: number;
+  username: string;
+  password?: string;
+  timeoutMs?: number;
+}): Promise<RouterQueuesResult> {
+  const { routerId, host, apiPort, username, password = '', timeoutMs = 4000 } = params;
+
+  const socketCheck = await testRouterConnection(host, apiPort, 2000);
+  if (!socketCheck.success) {
+    return {
+      connected: false,
+      message: `Router tidak dapat dijangkau: ${socketCheck.message}`,
+      queues: [],
+    };
+  }
+
+  const api = new RouterOSAPI({
+    host,
+    port: apiPort,
+    user: username,
+    password,
+    timeout: Math.ceil(timeoutMs / 1000),
+  });
+
+  api.on('error', (err) => {
+    logger.warn(`RouterOS queue fetch error (${host}:${apiPort}): ${err?.message || err}`);
+  });
+
+  const withTimeout = <T>(promise: Promise<T>, ms: number, opName: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout ${ms}ms: ${opName}`)), ms)
+      ),
+    ]);
+  };
+
+  const queues: RouterQueueData[] = [];
+
+  try {
+    await withTimeout(api.connect(), timeoutMs, 'koneksi RouterOS API');
+
+    try {
+      const simpleQueues: any[] = await withTimeout(
+        api.write('/queue/simple/print'),
+        timeoutMs,
+        '/queue/simple/print'
+      );
+
+      if (Array.isArray(simpleQueues)) {
+        for (const item of simpleQueues) {
+          const name = item['name'] ? String(item['name']) : '';
+          if (!name) continue;
+
+          queues.push({
+            id: item['.id'] ? String(item['.id']) : name,
+            routerId,
+            name,
+            kind: 'simple',
+            target: item['target'] ? String(item['target']) : undefined,
+            comment: item['comment'] ? String(item['comment']) : undefined,
+            maxLimit: item['max-limit'] ? String(item['max-limit']) : undefined,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `Gagal membaca /queue/simple/print dari ${host}: ${
+          err instanceof Error ? err.message : err
+        }`
+      );
+    }
+
+    try {
+      const treeQueues: any[] = await withTimeout(
+        api.write('/queue/tree/print'),
+        timeoutMs,
+        '/queue/tree/print'
+      );
+
+      if (Array.isArray(treeQueues)) {
+        for (const item of treeQueues) {
+          const name = item['name'] ? String(item['name']) : '';
+          if (!name) continue;
+
+          queues.push({
+            id: item['.id'] ? String(item['.id']) : name,
+            routerId,
+            name,
+            kind: 'parent',
+            target: item['packet-mark'] ? String(item['packet-mark']) : undefined,
+            comment: item['comment'] ? String(item['comment']) : undefined,
+            maxLimit: item['max-limit']
+              ? String(item['max-limit'])
+              : item['limit-at']
+                ? String(item['limit-at'])
+                : undefined,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `Gagal membaca /queue/tree/print dari ${host}: ${
+          err instanceof Error ? err.message : err
+        }`
+      );
+    }
+
+    await api.close();
+
+    return {
+      connected: true,
+      message:
+        queues.length > 0
+          ? `${queues.length} queue ditemukan pada router`
+          : 'Router terhubung, tetapi belum ada queue',
+      queues,
+    };
+  } catch (err: unknown) {
+    try {
+      await api.close();
+    } catch {
+      // Ignored
+    }
+
+    return {
+      connected: false,
+      message: `Gagal mengambil queue: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      queues: [],
+    };
+  }
+}
+
+export interface RouterUserEntry {
+  id: string;
+  username: string;
+  profile: string;
+  comment?: string;
+  address?: string;
+}
+
+export interface RouterUsersResult {
+  connected: boolean;
+  message: string;
+  users: RouterUserEntry[];
+}
+
+async function fetchRouterUsers(
+  params: {
+    routerId: string;
+    host: string;
+    apiPort: number;
+    username: string;
+    password?: string;
+    timeoutMs?: number;
+  },
+  path: string,
+  label: string
+): Promise<RouterUsersResult> {
+  const { routerId, host, apiPort, username, password = '', timeoutMs = 4000 } = params;
+
+  const socketCheck = await testRouterConnection(host, apiPort, 2000);
+  if (!socketCheck.success) {
+    return {
+      connected: false,
+      message: `Router tidak dapat dijangkau: ${socketCheck.message}`,
+      users: [],
+    };
+  }
+
+  const api = new RouterOSAPI({
+    host,
+    port: apiPort,
+    user: username,
+    password,
+    timeout: Math.ceil(timeoutMs / 1000),
+  });
+
+  api.on('error', (err) => {
+    logger.warn(`${label} fetch error (${host}:${apiPort}): ${err?.message || err}`);
+  });
+
+  const withTimeout = <T>(promise: Promise<T>, ms: number, opName: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout ${ms}ms: ${opName}`)), ms)
+      ),
+    ]);
+  };
+
+  try {
+    await withTimeout(api.connect(), timeoutMs, 'koneksi RouterOS API');
+    const rows: any[] = await withTimeout(
+      api.write(path),
+      timeoutMs,
+      path
+    );
+
+    const users: RouterUserEntry[] = Array.isArray(rows)
+      ? rows
+          .map((item) => ({
+            id: item['.id'] ? String(item['.id']) : String(item['name'] ?? ''),
+            username: item['name'] ? String(item['name']) : '',
+            profile: item['profile'] ? String(item['profile']) : '',
+            comment: item['comment'] ? String(item['comment']) : undefined,
+            address: item['remote-address']
+              ? String(item['remote-address'])
+              : undefined,
+          }))
+          .filter((item) => item.username)
+      : [];
+
+    await api.close();
+
+    return {
+      connected: true,
+      message:
+        users.length > 0
+          ? `${users.length} ${label} ditemukan`
+          : `Router terhubung, tetapi belum ada ${label}`,
+      users,
+    };
+  } catch (err: unknown) {
+    try {
+      await api.close();
+    } catch {
+      // Ignored
+    }
+    return {
+      connected: false,
+      message: `Gagal mengambil ${label}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      users: [],
+    };
+  }
+}
+
+export function fetchRouterPppoeSecrets(params: {
+  routerId: string;
+  host: string;
+  apiPort: number;
+  username: string;
+  password?: string;
+  timeoutMs?: number;
+}): Promise<RouterUsersResult> {
+  return fetchRouterUsers(params, '/ppp/secret/print', 'PPPoE secret');
+}
+
+export function fetchRouterHotspotUsers(params: {
+  routerId: string;
+  host: string;
+  apiPort: number;
+  username: string;
+  password?: string;
+  timeoutMs?: number;
+}): Promise<RouterUsersResult> {
+  return fetchRouterUsers(params, '/ip/hotspot/user/print', 'hotspot user');
+}

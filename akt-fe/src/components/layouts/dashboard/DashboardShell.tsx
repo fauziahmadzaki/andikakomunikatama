@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import { Toaster } from "@/components/ui/sonner";
+import { usePlanProfileStore } from "@/features/plan-profiles/store/plan-profile-store";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopbar } from "./DashboardTopbar";
 import { getPageTitle } from "./data/navigation";
@@ -14,6 +15,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const fetchPlanProfiles = usePlanProfileStore(
+    (state) => state.fetchPlanProfiles
+  );
+
+  useEffect(() => {
+    fetchPlanProfiles();
+  }, [fetchPlanProfiles]);
 
   return (
     <div className="min-h-svh bg-muted/40 print:bg-white">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -15,9 +15,15 @@ export function usePlanProfilesPage() {
   const router = useRouter();
   const profiles = usePlanProfileStore((state) => state.profiles);
   const ipPools = usePlanProfileStore((state) => state.ipPools);
+  const isLoading = usePlanProfileStore((state) => state.isLoading);
+  const fetchPlanProfiles = usePlanProfileStore(
+    (state) => state.fetchPlanProfiles
+  );
   const toggleProfile = usePlanProfileStore((state) => state.toggleProfile);
+  const syncProfile = usePlanProfileStore((state) => state.syncProfile);
   const deleteProfile = usePlanProfileStore((state) => state.deleteProfile);
   const routers = useNetworkStore((state) => state.routers);
+  const fetchRouters = useNetworkStore((state) => state.fetchRouters);
   const routerQueues = useNetworkStore((state) => state.routerQueues);
   const session = useAuthStore((state) => state.session);
   const rolePermissions = useUsersStore((state) => state.rolePermissions);
@@ -35,6 +41,11 @@ export function usePlanProfilesPage() {
   const canViewDiscounts = session
     ? hasPermission(session.role, "discount.read", rolePermissions)
     : false;
+
+  useEffect(() => {
+    fetchPlanProfiles();
+    fetchRouters();
+  }, [fetchPlanProfiles, fetchRouters]);
 
   const filtered = useMemo(
     () =>
@@ -66,23 +77,72 @@ export function usePlanProfilesPage() {
     return ipPools.find((pool) => pool.id === poolId)?.name ?? "-";
   }
 
-  function queueName(queueId: string) {
-    return routerQueues.find((queue) => queue.id === queueId)?.name ?? "-";
-  }
-
-  function confirmDelete() {
-    if (confirmProfile) {
-      deleteProfile(confirmProfile.id);
-      toast.success("Paket dihapus.");
+  function queueName(profile: PlanProfile) {
+    if (profile.parentQueueName) {
+      return profile.parentQueueName;
     }
-    setConfirmProfile(null);
+
+    return (
+      routerQueues.find((queue) => queue.id === profile.parentQueueId)?.name ??
+      "-"
+    );
   }
 
-  function toggle(profile: PlanProfile) {
-    toggleProfile(profile.id);
-    toast.success(
-      profile.isActive ? "Paket dinonaktifkan." : "Paket diaktifkan."
-    );
+  async function confirmDelete() {
+    if (!confirmProfile) {
+      return;
+    }
+
+    try {
+      await deleteProfile(confirmProfile.id);
+      toast.success("Paket dihapus.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menghapus paket."
+      );
+    } finally {
+      setConfirmProfile(null);
+    }
+  }
+
+  async function toggle(profile: PlanProfile) {
+    try {
+      const result = await toggleProfile(profile.id);
+
+      if (result.routerSync && !result.routerSync.success) {
+        toast.warning(
+          `Status paket diubah, tetapi sinkron ke router gagal: ${result.routerSync.message}`,
+          { duration: 8000 }
+        );
+        return;
+      }
+
+      toast.success(
+        profile.isActive ? "Paket dinonaktifkan." : "Paket diaktifkan."
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal mengubah status paket."
+      );
+    }
+  }
+
+  async function sync(profile: PlanProfile) {
+    try {
+      const result = await syncProfile(profile.id);
+
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.warning(result.message, { duration: 8000 });
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal sinkron paket ke router."
+      );
+    }
   }
 
   function editProfile(profile: PlanProfile) {
@@ -105,10 +165,12 @@ export function usePlanProfilesPage() {
     poolName,
     queueName,
     toggle,
+    sync,
     confirmDelete,
     canCreate,
     canEdit,
     canViewDiscounts,
+    isLoading,
     editProfile,
   };
 }

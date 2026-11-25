@@ -56,6 +56,11 @@ type SubscriptionState = {
   ) => number;
   toggleSuspensionCandidate: (id: string) => void;
   runSuspensionBatch: (ids: string[]) => number;
+  hydrateRemote: (data: {
+    subscriptions: Subscription[];
+    services: SubscriptionService[];
+    credentials: ServiceCredential[];
+  }) => void;
   resetSubscriptions: () => void;
 };
 
@@ -494,6 +499,19 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           "System"
         );
         return count;
+      },
+
+      hydrateRemote: (data) => {
+        const ids = new Set(data.subscriptions.map((item) => item.id));
+        set((state) => ({
+          subscriptions: data.subscriptions,
+          services: data.services,
+          credentials: data.credentials,
+          history: state.history.filter((item) => ids.has(item.subscriptionId)),
+          suspensionCandidates: state.suspensionCandidates.filter((item) =>
+            ids.has(item.subscriptionId)
+          ),
+        }));
       },
 
       resetSubscriptions: () => {

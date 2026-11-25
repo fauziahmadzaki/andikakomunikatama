@@ -4,6 +4,7 @@ import {
   BanIcon,
   CheckCircleIcon,
   PencilIcon,
+  RefreshCwIcon,
   Trash2Icon,
 } from "lucide-react";
 
@@ -19,15 +20,19 @@ export function PlanProfilesTable({
   routerName,
   poolName,
   queueName,
+  isLoading,
   onEdit,
+  onSync,
   onToggle,
   onDelete,
 }: {
   profiles: PlanProfile[];
   routerName: (routerId: string) => string;
   poolName: (poolId: string) => string;
-  queueName: (queueId: string) => string;
+  queueName: (profile: PlanProfile) => string;
+  isLoading?: boolean;
   onEdit?: (profile: PlanProfile) => void;
+  onSync: (profile: PlanProfile) => void;
   onToggle: (profile: PlanProfile) => void;
   onDelete: (profile: PlanProfile) => void;
 }) {
@@ -95,7 +100,7 @@ export function PlanProfilesTable({
       header: "Parent queue",
       cell: (profile) => (
         <span className="font-mono text-xs text-muted-foreground">
-          {queueName(profile.parentQueueId)}
+          {queueName(profile)}
         </span>
       ),
     },
@@ -138,6 +143,11 @@ export function PlanProfilesTable({
             />
           ) : null}
           <ActionIconButton
+            icon={RefreshCwIcon}
+            label={`Sync ${profile.name} ke router`}
+            onPress={() => onSync(profile)}
+          />
+          <ActionIconButton
             icon={profile.isActive ? BanIcon : CheckCircleIcon}
             label={
               profile.isActive
@@ -164,7 +174,7 @@ export function PlanProfilesTable({
       columns={columns}
       getRowKey={(profile) => profile.id}
       ariaLabel="Daftar paket"
-      emptyMessage="Belum ada paket."
+      emptyMessage={isLoading ? "Memuat paket..." : "Belum ada paket."}
     />
   );
 }

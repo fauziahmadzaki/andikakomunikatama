@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { useBillingStore } from "@/features/billing/store/billing-store";
@@ -90,6 +90,7 @@ const emptyIdentity: IdentityForm = {
 
 export function useCustomerDetail(id: string) {
   const customers = useCustomerStore((state) => state.customers);
+  const fetchCustomers = useCustomerStore((state) => state.fetchCustomers);
   const addresses = useCustomerStore((state) => state.addresses);
   const contacts = useCustomerStore((state) => state.contacts);
   const identities = useCustomerStore((state) => state.identities);
@@ -113,7 +114,13 @@ export function useCustomerDetail(id: string) {
   const tickets = useTicketStore((state) => state.tickets);
   const packages = usePlanProfileStore((state) => state.profiles);
   const branches = useBranchStore((state) => state.branches);
+  const fetchBranches = useBranchStore((state) => state.fetchBranches);
   const employees = useUsersStore((state) => state.employees);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchBranches();
+  }, [fetchBranches, fetchCustomers]);
 
   const customer = customers.find((item) => item.id === id);
   const subscription =
@@ -173,7 +180,7 @@ export function useCustomerDetail(id: string) {
     fullName: customer?.fullName ?? "",
     customerType: customer?.customerType ?? "residential",
     registrationType: customer?.registrationType ?? "existing",
-    branchId: customer?.branchId ?? "br-jkt",
+    branchId: customer?.branchId ?? "",
     salesEmployeeId: customer?.salesEmployeeId ?? "",
     notes: customer?.notes ?? "",
   });
@@ -198,6 +205,24 @@ export function useCustomerDetail(id: string) {
     id: string;
   } | null>(null);
 
+  async function execute(
+    action: () => Promise<void>,
+    message: string,
+    onDone?: () => void
+  ) {
+    try {
+      await action();
+      toast.success(message);
+      onDone?.();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memproses data pelanggan."
+      );
+    }
+  }
+
   function openEdit() {
     if (customer) {
       setForm({
@@ -212,7 +237,7 @@ export function useCustomerDetail(id: string) {
     setEditOpen(true);
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!customer) {
       return;
     }
@@ -220,34 +245,38 @@ export function useCustomerDetail(id: string) {
       toast.error("Nama pelanggan wajib diisi.");
       return;
     }
-    updateCustomer(customer.id, {
-      fullName: form.fullName,
-      customerType: form.customerType,
-      registrationType: form.registrationType,
-      branchId: form.branchId,
-      salesEmployeeId: form.salesEmployeeId || undefined,
-      notes: form.notes,
-    });
-    toast.success("Data pelanggan diperbarui.");
-    setEditOpen(false);
+    await execute(
+      () =>
+        updateCustomer(customer.id, {
+          fullName: form.fullName,
+          customerType: form.customerType,
+          registrationType: form.registrationType,
+          branchId: form.branchId,
+          salesEmployeeId: form.salesEmployeeId || undefined,
+          notes: form.notes,
+        }),
+      "Data pelanggan diperbarui.",
+      () => setEditOpen(false)
+    );
   }
 
-  function confirmToggle() {
+  async function confirmToggle() {
     if (!customer) {
       return;
     }
     const next = customer.status === "active" ? "inactive" : "active";
-    setStatus(
-      customer.id,
-      next,
-      next === "active"
-        ? "Pelanggan diaktifkan kembali."
-        : "Pelanggan dinonaktifkan."
+    await execute(
+      () =>
+        setStatus(
+          customer.id,
+          next,
+          next === "active"
+            ? "Pelanggan diaktifkan kembali."
+            : "Pelanggan dinonaktifkan."
+        ),
+      next === "active" ? "Pelanggan diaktifkan." : "Pelanggan dinonaktifkan.",
+      () => setConfirmOpen(false)
     );
-    toast.success(
-      next === "active" ? "Pelanggan diaktifkan." : "Pelanggan dinonaktifkan."
-    );
-    setConfirmOpen(false);
   }
 
   function openCreateAddress() {
@@ -273,7 +302,7 @@ export function useCustomerDetail(id: string) {
     setAddressOpen(true);
   }
 
-  function saveAddress() {
+  async function saveAddress() {
     if (!customer) {
       return;
     }
@@ -296,35 +325,39 @@ export function useCustomerDetail(id: string) {
         : undefined,
       isPrimary: addressForm.isPrimary,
     };
-    if (editingAddressId) {
-      updateAddress(editingAddressId, payload);
-      toast.success("Alamat diperbarui.");
-    } else {
-      addAddress(payload);
-      toast.success("Alamat ditambahkan.");
-    }
-    setAddressOpen(false);
+    await execute(
+      () =>
+        editingAddressId
+          ? updateAddress(editingAddressId, payload)
+          : addAddress(payload),
+      editingAddressId ? "Alamat diperbarui." : "Alamat ditambahkan.",
+      () => setAddressOpen(false)
+    );
   }
 
   function requestDelete(type: "address" | "contact" | "identity", id: string) {
     setPendingDelete({ type, id });
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) {
       return;
     }
     if (pendingDelete.type === "address") {
-      removeAddress(pendingDelete.id);
-      toast.success("Alamat dihapus.");
+      await execute(() => removeAddress(pendingDelete.id), "Alamat dihapus.", () =>
+        setPendingDelete(null)
+      );
     } else if (pendingDelete.type === "contact") {
-      removeContact(pendingDelete.id);
-      toast.success("Kontak dihapus.");
+      await execute(() => removeContact(pendingDelete.id), "Kontak dihapus.", () =>
+        setPendingDelete(null)
+      );
     } else {
-      removeIdentity(pendingDelete.id);
-      toast.success("Identitas dihapus.");
+      await execute(
+        () => removeIdentity(pendingDelete.id),
+        "Identitas dihapus.",
+        () => setPendingDelete(null)
+      );
     }
-    setPendingDelete(null);
   }
 
   function openCreateContact() {
@@ -344,7 +377,7 @@ export function useCustomerDetail(id: string) {
     setContactOpen(true);
   }
 
-  function saveContact() {
+  async function saveContact() {
     if (!customer) {
       return;
     }
@@ -353,14 +386,14 @@ export function useCustomerDetail(id: string) {
       return;
     }
     const payload = { customerId: customer.id, ...contactForm };
-    if (editingContactId) {
-      updateContact(editingContactId, payload);
-      toast.success("Kontak diperbarui.");
-    } else {
-      addContact(payload);
-      toast.success("Kontak ditambahkan.");
-    }
-    setContactOpen(false);
+    await execute(
+      () =>
+        editingContactId
+          ? updateContact(editingContactId, payload)
+          : addContact(payload),
+      editingContactId ? "Kontak diperbarui." : "Kontak ditambahkan.",
+      () => setContactOpen(false)
+    );
   }
 
   function openCreateIdentity() {
@@ -378,7 +411,7 @@ export function useCustomerDetail(id: string) {
     setIdentityOpen(true);
   }
 
-  function saveIdentity() {
+  async function saveIdentity() {
     if (!customer) {
       return;
     }
@@ -387,14 +420,14 @@ export function useCustomerDetail(id: string) {
       return;
     }
     const payload = { customerId: customer.id, ...identityForm };
-    if (editingIdentityId) {
-      updateIdentity(editingIdentityId, payload);
-      toast.success("Identitas diperbarui.");
-    } else {
-      addIdentity(payload);
-      toast.success("Identitas ditambahkan.");
-    }
-    setIdentityOpen(false);
+    await execute(
+      () =>
+        editingIdentityId
+          ? updateIdentity(editingIdentityId, payload)
+          : addIdentity(payload),
+      editingIdentityId ? "Identitas diperbarui." : "Identitas ditambahkan.",
+      () => setIdentityOpen(false)
+    );
   }
 
   function openAccount() {
@@ -406,19 +439,22 @@ export function useCustomerDetail(id: string) {
     setAccountOpen(true);
   }
 
-  function saveAccount() {
+  async function saveAccount() {
     if (!customer) {
       return;
     }
-    upsertAccount({
-      customerId: customer.id,
-      email: accountForm.email,
-      phone: accountForm.phone,
-      isActive: accountForm.isActive,
-      lastLoginAt: account?.lastLoginAt,
-    });
-    toast.success("Akun portal diperbarui.");
-    setAccountOpen(false);
+    await execute(
+      () =>
+        upsertAccount({
+          customerId: customer.id,
+          email: accountForm.email,
+          phone: accountForm.phone,
+          isActive: accountForm.isActive,
+          lastLoginAt: account?.lastLoginAt,
+        }),
+      "Akun portal diperbarui.",
+      () => setAccountOpen(false)
+    );
   }
 
   return {

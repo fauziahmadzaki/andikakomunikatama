@@ -20,6 +20,7 @@ export type PlanProfile = {
   routerId: string;
   ipPoolId: string;
   parentQueueId: string;
+  parentQueueName: string;
   localAddress: string;
   downloadMbps: number;
   uploadMbps: number;
@@ -41,4 +42,9 @@ export type SavePlanProfileInput = Omit<
 > & {
   ipPoolId?: string;
   newPool?: Omit<RouterIpPool, "id">;
+};
+
+export type RouterSyncResult = {
+  success: boolean;
+  message: string;
 };

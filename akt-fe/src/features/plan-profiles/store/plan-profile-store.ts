@@ -1,150 +1,156 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { generateUUID } from "@/lib/uuid";
 
-import { seedPlanProfiles, seedRouterIpPools } from "../data/seed";
-import type { PlanProfile, RouterIpPool, SavePlanProfileInput } from "../data/types";
+import { apiClient } from "@/lib/api-client";
+import type {
+  PlanProfile,
+  RouterIpPool,
+  RouterSyncResult,
+  SavePlanProfileInput,
+} from "../data/types";
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  message?: string;
+  data: T;
+};
+
+type SaveProfileResult = {
+  profile: ApiPlanProfile;
+  pool?: RouterIpPool;
+  routerSync?: RouterSyncResult;
+};
+
+type MutationResult = {
+  profile: PlanProfile;
+  routerSync?: RouterSyncResult;
+};
+
+type ApiPlanProfile = Omit<PlanProfile, "ipPoolId"> & {
+  ipPoolId: string | null;
+};
+
+function normalizeProfile(profile: ApiPlanProfile): PlanProfile {
+  return { ...profile, ipPoolId: profile.ipPoolId ?? "" };
+}
 
 type PlanProfileState = {
   profiles: PlanProfile[];
   ipPools: RouterIpPool[];
-  addProfile: (input: SavePlanProfileInput) => PlanProfile;
-  updateProfile: (id: string, input: SavePlanProfileInput) => void;
-  toggleProfile: (id: string) => void;
-  deleteProfile: (id: string) => void;
+  isLoading: boolean;
+  fetchPlanProfiles: () => Promise<void>;
+  addProfile: (input: SavePlanProfileInput) => Promise<MutationResult>;
+  updateProfile: (
+    id: string,
+    input: SavePlanProfileInput
+  ) => Promise<MutationResult>;
+  toggleProfile: (id: string) => Promise<MutationResult>;
+  syncProfile: (id: string) => Promise<RouterSyncResult>;
+  deleteProfile: (id: string) => Promise<boolean>;
   resetPlanProfiles: () => void;
 };
-
-function id() {
-  return generateUUID();
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export const usePlanProfileStore = create<PlanProfileState>()(
   persist(
     (set) => ({
-      profiles: seedPlanProfiles,
-      ipPools: seedRouterIpPools,
+      profiles: [],
+      ipPools: [],
+      isLoading: false,
 
-      addProfile: (input) => {
-        const { newPool, ipPoolId, ...profileInput } = input;
-        const profileId = id();
-        let resolvedPoolId = ipPoolId ?? "";
-        let createdPool: RouterIpPool | undefined;
+      fetchPlanProfiles: async () => {
+        set({ isLoading: true });
+        try {
+          const [profilesResponse, poolsResponse] = await Promise.all([
+            apiClient.get<ApiEnvelope<ApiPlanProfile[]>>("/plan-profiles"),
+            apiClient.get<ApiEnvelope<RouterIpPool[]>>(
+              "/plan-profiles/ip-pools"
+            ),
+          ]);
 
-        if (newPool) {
-          createdPool = { ...newPool, id: id() };
-          resolvedPoolId = createdPool.id;
+          set({
+            profiles: profilesResponse.data.data.map(normalizeProfile),
+            ipPools: poolsResponse.data.data,
+            isLoading: false,
+          });
+        } catch (error) {
+          console.warn("Gagal mengambil data paket dari backend:", error);
+          set({ isLoading: false });
         }
-
-        const profile: PlanProfile = {
-          ...profileInput,
-          id: profileId,
-          ipPoolId: resolvedPoolId,
-          createdAt: today(),
-        };
-
-        set((state) => ({
-          profiles: [profile, ...state.profiles],
-          ipPools: createdPool
-            ? [createdPool, ...state.ipPools]
-            : state.ipPools,
-        }));
-
-        return profile;
       },
 
-      updateProfile: (profileId, input) => {
-        const { newPool, ipPoolId, ...profilePatch } = input;
-        let resolvedPoolId = ipPoolId;
-        let createdPool: RouterIpPool | undefined;
-
-        if (newPool) {
-          createdPool = { ...newPool, id: id() };
-          resolvedPoolId = createdPool.id;
-        }
+      addProfile: async (input) => {
+        const response = await apiClient.post<ApiEnvelope<SaveProfileResult>>(
+          "/plan-profiles",
+          input
+        );
+        const { profile, pool, routerSync } = response.data.data;
+        const normalized = normalizeProfile(profile);
 
         set((state) => ({
-          profiles: state.profiles.map((profile) =>
-            profile.id === profileId
-              ? {
-                  ...profile,
-                  ...profilePatch,
-                  ipPoolId: resolvedPoolId ?? profile.ipPoolId,
-                }
-              : profile
+          profiles: [normalized, ...state.profiles],
+          ipPools: pool ? [pool, ...state.ipPools] : state.ipPools,
+        }));
+
+        return { profile: normalized, routerSync };
+      },
+
+      updateProfile: async (id, input) => {
+        const response = await apiClient.put<ApiEnvelope<SaveProfileResult>>(
+          `/plan-profiles/${id}`,
+          input
+        );
+        const { profile, pool, routerSync } = response.data.data;
+        const normalized = normalizeProfile(profile);
+
+        set((state) => ({
+          profiles: state.profiles.map((item) =>
+            item.id === id ? normalized : item
           ),
-          ipPools: createdPool
-            ? [createdPool, ...state.ipPools]
-            : state.ipPools,
+          ipPools: pool ? [pool, ...state.ipPools] : state.ipPools,
         }));
+
+        return { profile: normalized, routerSync };
       },
 
-      toggleProfile: (profileId) => {
+      toggleProfile: async (id) => {
+        const response = await apiClient.patch<
+          ApiEnvelope<{ profile: ApiPlanProfile; routerSync?: RouterSyncResult }>
+        >(`/plan-profiles/${id}/toggle`);
+        const profile = normalizeProfile(response.data.data.profile);
+
         set((state) => ({
-          profiles: state.profiles.map((profile) =>
-            profile.id === profileId
-              ? { ...profile, isActive: !profile.isActive }
-              : profile
+          profiles: state.profiles.map((item) =>
+            item.id === id ? profile : item
           ),
         }));
+
+        return { profile, routerSync: response.data.data.routerSync };
       },
 
-      deleteProfile: (profileId) => {
+      syncProfile: async (id) => {
+        const response = await apiClient.post<ApiEnvelope<RouterSyncResult>>(
+          `/plan-profiles/${id}/sync`
+        );
+        return response.data.data;
+      },
+
+      deleteProfile: async (id) => {
+        await apiClient.delete(`/plan-profiles/${id}`);
         set((state) => ({
-          profiles: state.profiles.filter((profile) => profile.id !== profileId),
+          profiles: state.profiles.filter((item) => item.id !== id),
         }));
+        return true;
       },
 
       resetPlanProfiles: () => {
-        set({
-          profiles: seedPlanProfiles,
-          ipPools: seedRouterIpPools,
-        });
+        set({ profiles: [], ipPools: [] });
       },
     }),
     {
       name: "muranet-plan-profiles",
       skipHydration: true,
-      version: 3,
-      migrate: (persistedState) => {
-        const state = (persistedState ?? {}) as Partial<PlanProfileState>;
-        const existingProfiles = Array.isArray(state.profiles)
-          ? state.profiles
-          : [];
-        const existingIds = new Set(
-          existingProfiles.map((profile) => profile.id)
-        );
-        const missingSeeds = seedPlanProfiles.filter(
-          (profile) => !existingIds.has(profile.id)
-        );
-        const seedById = new Map(
-          seedPlanProfiles.map((profile) => [profile.id, profile])
-        );
-        const normalizedProfiles = existingProfiles.map((profile) => {
-          const seed = seedById.get(profile.id);
-          if (!seed) {
-            return { ...profile, parentQueueId: profile.parentQueueId ?? "" };
-          }
-          return {
-            ...profile,
-            type: seed.type,
-            rateLimit: seed.rateLimit,
-            parentQueueId: profile.parentQueueId || seed.parentQueueId,
-          };
-        });
-
-        return {
-          ...state,
-          profiles: [...normalizedProfiles, ...missingSeeds],
-          ipPools: Array.isArray(state.ipPools)
-            ? state.ipPools
-            : seedRouterIpPools,
-        } as PlanProfileState;
-      },
+      version: 4,
+      migrate: () => ({ profiles: [], ipPools: [] }) as PlanProfileState,
     }
   )
 );

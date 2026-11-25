@@ -9,6 +9,8 @@ export default defineConfig({
     './src/models/router.model.ts',
     './src/models/branch.model.ts',
     './src/models/monitoring.model.ts',
+    './src/models/plan-profile.model.ts',
+    './src/models/customer.model.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

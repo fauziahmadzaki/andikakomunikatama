@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ export type CustomerBulkAction =
 export function useCustomersPage() {
   const router = useRouter();
   const customers = useCustomerStore((state) => state.customers);
+  const fetchCustomers = useCustomerStore((state) => state.fetchCustomers);
   const addresses = useCustomerStore((state) => state.addresses);
   const contacts = useCustomerStore((state) => state.contacts);
   const identities = useCustomerStore((state) => state.identities);
@@ -47,6 +48,7 @@ export function useCustomersPage() {
   const invoices = useBillingStore((state) => state.invoices);
   const packages = usePlanProfileStore((state) => state.profiles);
   const branches = useBranchStore((state) => state.branches);
+  const fetchBranches = useBranchStore((state) => state.fetchBranches);
   const employees = useUsersStore((state) => state.employees);
   const session = useAuthStore((state) => state.session);
   const rolePermissions = useUsersStore((state) => state.rolePermissions);
@@ -68,6 +70,11 @@ export function useCustomersPage() {
   const [bulkAction, setBulkAction] = useState<CustomerBulkAction | null>(null);
   const [bulkReason, setBulkReason] = useState("");
   const [bulkTargetPlanId, setBulkTargetPlanId] = useState("");
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchBranches();
+  }, [fetchBranches, fetchCustomers]);
 
   function setQuery(value: string) {
     setQueryState(value);
@@ -232,7 +239,7 @@ export function useCustomersPage() {
     toast.success(`${filtered.length} pelanggan diexport.`);
   }
 
-  function confirmToggle() {
+  async function confirmToggle() {
     if (!confirmCustomer) {
       return;
     }
@@ -243,7 +250,7 @@ export function useCustomersPage() {
       ? "Isolir pelanggan."
       : "Pelanggan diaktifkan kembali.";
 
-    setCustomerStatus(confirmCustomer.id, nextStatus, reason);
+    await setCustomerStatus(confirmCustomer.id, nextStatus, reason);
     const customerSubscriptions = subscriptions.filter(
       (subscription) => subscription.customerId === confirmCustomer.id
     );
@@ -285,7 +292,7 @@ export function useCustomersPage() {
     setBulkReason("");
   }
 
-  function applyBulkAction() {
+  async function applyBulkAction() {
     if (!bulkAction || selectedCustomers.length === 0) {
       return;
     }
@@ -316,8 +323,12 @@ export function useCustomersPage() {
       );
     } else if (bulkAction === "isolate") {
       const reason = bulkReason.trim() || "Isolir massal.";
+      await Promise.all(
+        selected.map((customer) =>
+          setCustomerStatus(customer.id, "suspended", reason)
+        )
+      );
       selected.forEach((customer) => {
-        setCustomerStatus(customer.id, "suspended", reason);
         subscriptions
           .filter(
             (subscription) =>
@@ -330,8 +341,12 @@ export function useCustomersPage() {
       });
       toast.success(`${selected.length} pelanggan diisolir.`);
     } else if (bulkAction === "activate") {
+      await Promise.all(
+        selected.map((customer) =>
+          setCustomerStatus(customer.id, "active", "Aktivasi massal.")
+        )
+      );
       selected.forEach((customer) => {
-        setCustomerStatus(customer.id, "active", "Aktivasi massal.");
         const subscription = subscriptions.find(
           (item) =>
             item.customerId === customer.id && item.status !== "terminated"
@@ -344,8 +359,12 @@ export function useCustomersPage() {
       });
       toast.success(`${selected.length} pelanggan diaktifkan.`);
     } else if (bulkAction === "deactivate") {
+      await Promise.all(
+        selected.map((customer) =>
+          setCustomerStatus(customer.id, "inactive", "Dinonaktifkan massal.")
+        )
+      );
       selected.forEach((customer) => {
-        setCustomerStatus(customer.id, "inactive", "Dinonaktifkan massal.");
         subscriptions
           .filter(
             (subscription) =>
@@ -373,7 +392,7 @@ export function useCustomersPage() {
             terminateSubscription(subscription.id, "Pelanggan dihapus.")
           );
       });
-      deleteCustomers(ids);
+      await deleteCustomers(ids);
       toast.success(`${ids.length} pelanggan dihapus.`);
     }
 

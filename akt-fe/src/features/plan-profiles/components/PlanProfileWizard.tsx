@@ -20,6 +20,8 @@ export function PlanProfileWizard({ profileId }: { profileId?: string }) {
   const {
     profile,
     isEditing,
+    isInitializing,
+    isSaving,
     step,
     form,
     set,
@@ -27,6 +29,8 @@ export function PlanProfileWizard({ profileId }: { profileId?: string }) {
     routers,
     pools,
     parentQueues,
+    queuesLoading,
+    queuesMessage,
     router,
     selectedPool,
     selectedParentQueue,
@@ -35,6 +39,14 @@ export function PlanProfileWizard({ profileId }: { profileId?: string }) {
     back,
     save,
   } = usePlanProfileWizard(profileId);
+
+  if (isInitializing) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-xl border border-dashed p-10 text-center">
+        <p className="text-sm font-medium">Memuat data paket...</p>
+      </div>
+    );
+  }
 
   if (profileId && !profile) {
     return (
@@ -78,6 +90,8 @@ export function PlanProfileWizard({ profileId }: { profileId?: string }) {
               routers={routers}
               pools={pools}
               parentQueues={parentQueues}
+              queuesLoading={queuesLoading}
+              queuesMessage={queuesMessage}
               router={router}
               selectedPool={selectedPool}
               selectedParentQueue={selectedParentQueue}
@@ -125,9 +139,13 @@ export function PlanProfileWizard({ profileId }: { profileId?: string }) {
                 <ArrowRightIcon />
               </Button>
             ) : (
-              <Button type="button" onPress={save}>
+              <Button type="button" onPress={save} isDisabled={isSaving}>
                 <SaveIcon />
-                {isEditing ? "Simpan perubahan" : "Simpan paket"}
+                {isSaving
+                  ? "Menyimpan..."
+                  : isEditing
+                    ? "Simpan perubahan"
+                    : "Simpan paket"}
               </Button>
             )}
           </div>

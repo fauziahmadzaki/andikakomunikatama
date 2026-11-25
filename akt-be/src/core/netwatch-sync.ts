@@ -16,7 +16,7 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, opName: string): Promis
 };
 
 export function getServerIpForRouter(routerHost?: string): string {
-  if (process.env.WEBHOOK_HOST) return process.env.WEBHOOK_HOST;
+  if (env.WEBHOOK_HOST) return env.WEBHOOK_HOST;
 
   const interfaces = os.networkInterfaces();
   const ips: string[] = [];
@@ -43,7 +43,7 @@ export function getServerIpForRouter(routerHost?: string): string {
 
 export function getWebhookUrl(targetId: string, status: 'up' | 'down', host?: string, port?: number): string {
   const targetHost = host || getServerIpForRouter();
-  const targetPort = port || env.PORT || 5000;
+  const targetPort = port || env.WEBHOOK_PORT || env.PORT || 5000;
   return `http://${targetHost}:${targetPort}/api/v1/monitoring/webhook?targetId=${targetId}&status=${status}`;
 }
 
@@ -100,6 +100,28 @@ export async function syncNetwatchToRouter(
       if (Array.isArray(list)) {
         const existingForHost = list.find((item) => item['host'] === target.host);
         if (existingForHost) {
+          const existingUp = String(existingForHost['up-script'] ?? '');
+          const existingDown = String(existingForHost['down-script'] ?? '');
+          const expectedUp = `/tool fetch url="${upUrl}" keep-result=no`;
+          const expectedDown = `/tool fetch url="${downUrl}" keep-result=no`;
+
+          if (existingUp !== expectedUp || existingDown !== expectedDown) {
+            await withTimeout(
+              api.write('/tool/netwatch/set', [
+                `=.id=${existingForHost['.id']}`,
+                `=up-script=${expectedUp}`,
+                `=down-script=${expectedDown}`,
+              ]),
+              1500,
+              'netwatch set'
+            );
+            await api.close();
+            return {
+              success: true,
+              message: `URL webhook Netwatch untuk ${target.host} diperbarui ke ${serverIp}`,
+            };
+          }
+
           await api.close();
           return {
             success: true,

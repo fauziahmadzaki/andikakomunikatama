@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { useAuditStore } from "@/features/audit/store/audit-store";
+import { defaultRolePermissions } from "../data/permissions";
 import type { Employee } from "../data/employees";
 import type { LocalUser, UserRole } from "../data/users";
 
@@ -38,7 +39,7 @@ export const useUsersStore = create<UsersState>()(
     (set, get) => ({
       users: [],
       employees: [],
-      rolePermissions: {} as Record<UserRole, string[]>,
+      rolePermissions: defaultRolePermissions,
 
       addUser: (input) => {
         const user: LocalUser = {
@@ -101,10 +102,27 @@ export const useUsersStore = create<UsersState>()(
         set({
           users: [],
           employees: [],
-          rolePermissions: {} as Record<UserRole, string[]>,
+          rolePermissions: defaultRolePermissions,
         });
       },
     }),
-    { name: "muranet-users-v2", skipHydration: true }
+    {
+      name: "muranet-users-v2",
+      skipHydration: true,
+      // Data lama di localStorage bisa berisi rolePermissions kosong.
+      // Selalu lengkapi dengan permission default supaya menu admin tetap terbuka.
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<UsersState> | undefined;
+
+        return {
+          ...current,
+          ...saved,
+          rolePermissions: {
+            ...defaultRolePermissions,
+            ...(saved?.rolePermissions ?? {}),
+          },
+        };
+      },
+    }
   )
 );

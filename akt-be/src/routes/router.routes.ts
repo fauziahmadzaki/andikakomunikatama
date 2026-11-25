@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { routerController } from '../controllers/router.controller.js';
+import { routerQueueController } from '../controllers/router-queue.controller.js';
+import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.js';
 import {
   createRouterSchema,
@@ -14,6 +16,27 @@ router.get('/', (req, res, next) => routerController.getAll(req, res, next));
 
 router.post('/test-connection', validate(testConnectionSchema), (req, res, next) =>
   routerController.testDirect(req, res, next)
+);
+
+router.get(
+  '/:id/queues',
+  authenticate,
+  validate(routerIdParamSchema),
+  (req, res, next) => routerQueueController.getByRouter(req, res, next)
+);
+
+router.get(
+  '/:id/pppoe-secrets',
+  authenticate,
+  validate(routerIdParamSchema),
+  (req, res, next) => routerQueueController.getPppoeSecrets(req, res, next)
+);
+
+router.get(
+  '/:id/hotspot-users',
+  authenticate,
+  validate(routerIdParamSchema),
+  (req, res, next) => routerQueueController.getHotspotUsers(req, res, next)
 );
 
 router.get('/:id', validate(routerIdParamSchema), (req, res, next) =>

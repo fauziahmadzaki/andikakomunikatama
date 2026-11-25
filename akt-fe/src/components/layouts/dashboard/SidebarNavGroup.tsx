@@ -18,7 +18,10 @@ export function SidebarNavGroup({
   onNavigate?: () => void;
 }) {
   const groupActive = group.items.some((item) => item.href === activeHref);
-  const panelId = `nav-${group.title.toLowerCase()}`;
+  const panelId = `nav-${group.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}`;
 
   return (
     <div>

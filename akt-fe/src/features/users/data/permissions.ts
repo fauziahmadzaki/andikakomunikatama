@@ -131,5 +131,10 @@ export function hasPermission(
   code: string,
   rolePermissions: Record<UserRole, string[]>
 ) {
+  // Admin selalu bypass permission dan bisa mengakses semua menu.
+  if (role === "admin") {
+    return true;
+  }
+
   return rolePermissions[role]?.includes(code) ?? false;
 }

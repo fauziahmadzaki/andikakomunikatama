@@ -113,3 +113,66 @@ export type ImportRow = {
   status: "valid" | "warning" | "error";
   message: string;
 };
+
+export type CustomerBundle = {
+  customers: Customer[];
+  addresses: CustomerAddress[];
+  contacts: CustomerContact[];
+  identities: CustomerIdentity[];
+  accounts: CustomerAccount[];
+  statusHistory: CustomerStatusHistory[];
+  subscriptions: import("@/features/subscriptions/data/types").Subscription[];
+  services: import("@/features/subscriptions/data/types").SubscriptionService[];
+  credentials: import("@/features/subscriptions/data/types").ServiceCredential[];
+};
+
+export type RegisterCustomerPayload = {
+  customer: {
+    customerNumber?: string;
+    branchId: string;
+    salesEmployeeId?: string;
+    fullName: string;
+    customerType: CustomerType;
+    registrationType: RegistrationType;
+    status?: CustomerStatus;
+    registeredAt?: string;
+    notes?: string;
+  };
+  address: Omit<CustomerAddress, "id" | "customerId">;
+  contacts: Array<Omit<CustomerContact, "id" | "customerId">>;
+  identity: Omit<CustomerIdentity, "id" | "customerId">;
+  account: Omit<CustomerAccount, "id" | "customerId">;
+  subscription: {
+    planId: string;
+    dueDay: number;
+    startDate?: string;
+    discountId?: string;
+    prorateEnabled: boolean;
+    taxEnabled: boolean;
+    incentiveMethod: "none" | "fixed" | "percentage";
+    incentiveValue: number;
+  };
+  service: {
+    connectionType: "static" | "dhcp" | "pppoe" | "hotspot";
+    provisionMethod: "new" | "sync";
+    routerId: string;
+    parentQueueId?: string;
+    parentQueueName?: string;
+    queueName?: string;
+    targetIp?: string;
+    syncSourceId?: string;
+    username?: string;
+    installation?: {
+      snOnu?: string;
+      onuSerial?: string;
+      onuBrand?: string;
+      odc?: string;
+      odp?: string;
+      odpPort?: string;
+      cableLengthM?: number;
+      connectorCount?: number;
+      materialNotes?: string;
+    };
+  };
+  overrideDuplicate?: boolean;
+};

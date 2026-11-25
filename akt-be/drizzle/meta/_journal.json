@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795401475168,
+      "tag": "0000_fuzzy_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795428699656,
+      "tag": "0001_talented_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795437078437,
+      "tag": "0002_marvelous_supreme_intelligence",
+      "breakpoints": true
+    }
+  ]
+}

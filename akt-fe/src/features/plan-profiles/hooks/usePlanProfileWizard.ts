@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import type { RouterQueue } from "@/features/network/data/types";
 import type { Router } from "@/features/network/data/types";
 import { useNetworkStore } from "@/features/network/store/network-store";
 import {
@@ -22,6 +23,17 @@ import type {
   RouterIpPool,
 } from "@/features/plan-profiles/data/types";
 import { usePlanProfileStore } from "@/features/plan-profiles/store/plan-profile-store";
+import { apiClient } from "@/lib/api-client";
+
+type QueuesEnvelope = {
+  success: boolean;
+  message?: string;
+  data: {
+    connected: boolean;
+    message: string;
+    queues: RouterQueue[];
+  };
+};
 
 export type PlanProfileWizardForm = {
   name: string;
@@ -52,7 +64,6 @@ export type SetPlanProfileField = <K extends keyof PlanProfileWizardForm>(
 function initialForm(
   routers: Router[],
   pools: RouterIpPool[],
-  parentQueues: { id: string; routerId: string; name: string }[],
   profile?: PlanProfile
 ): PlanProfileWizardForm {
   if (profile) {
@@ -83,9 +94,6 @@ function initialForm(
 
   const router = routers[0];
   const pool = pools.find((item) => item.routerId === router?.id);
-  const parentQueue = parentQueues.find(
-    (queue) => queue.routerId === router?.id
-  );
 
   return {
     name: "",
@@ -95,7 +103,7 @@ function initialForm(
     billingType: "monthly",
     isActive: true,
     routerId: router?.id ?? "",
-    parentQueueId: parentQueue?.id ?? "",
+    parentQueueId: "",
     poolMode: pool ? "existing" : "new",
     ipPoolId: pool?.id ?? "",
     newPoolName: "",
@@ -114,27 +122,117 @@ export function usePlanProfileWizard(profileId?: string) {
   const routers = useNetworkStore((state) => state.routers).filter(
     (item) => item.status === "active"
   );
-  const routerQueues = useNetworkStore((state) => state.routerQueues);
+  const fetchRouters = useNetworkStore((state) => state.fetchRouters);
   const profiles = usePlanProfileStore((state) => state.profiles);
   const ipPools = usePlanProfileStore((state) => state.ipPools);
+  const fetchPlanProfiles = usePlanProfileStore(
+    (state) => state.fetchPlanProfiles
+  );
   const addProfile = usePlanProfileStore((state) => state.addProfile);
   const updateProfile = usePlanProfileStore((state) => state.updateProfile);
   const profile = profileId
     ? profiles.find((item) => item.id === profileId)
     : undefined;
+
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
-  const [form, setForm] = useState<PlanProfileWizardForm>(() =>
-    initialForm(routers, ipPools, routerQueues, profile)
+  const [queueState, setQueueState] = useState<{
+    routerId: string;
+    queues: RouterQueue[];
+    message: string;
+  }>({ routerId: "", queues: [], message: "" });
+  const [formOverride, setFormOverride] =
+    useState<PlanProfileWizardForm | null>(null);
+
+  const baselineForm = useMemo(
+    () => initialForm(routers, ipPools, profile),
+    [routers, ipPools, profile]
   );
+  const form = formOverride ?? baselineForm;
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([fetchPlanProfiles(), fetchRouters()]).finally(() => {
+      if (active) setIsInitializing(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [fetchPlanProfiles, fetchRouters]);
+
+  useEffect(() => {
+    if (!form.routerId) {
+      return;
+    }
+
+    let active = true;
+    const routerId = form.routerId;
+
+    apiClient
+      .get<QueuesEnvelope>(`/routers/${routerId}/queues`)
+      .then((response) => {
+        if (!active) return;
+        setQueueState({
+          routerId,
+          queues: response.data.data.queues ?? [],
+          message: response.data.data.connected
+            ? ""
+            : response.data.data.message,
+        });
+      })
+      .catch((err) => {
+        if (!active) return;
+        setQueueState({
+          routerId,
+          queues: [],
+          message:
+            err instanceof Error
+              ? err.message
+              : "Gagal mengambil queue router.",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [form.routerId]);
+
+  const queues = useMemo(
+    () => (queueState.routerId === form.routerId ? queueState.queues : []),
+    [queueState, form.routerId]
+  );
+  const queuesMessage =
+    queueState.routerId === form.routerId ? queueState.message : "";
+  const queuesLoading =
+    Boolean(form.routerId) && queueState.routerId !== form.routerId;
 
   const pools = ipPools.filter((pool) => pool.routerId === form.routerId);
-  const parentQueues = routerQueues.filter(
-    (queue) => queue.routerId === form.routerId && queue.kind === "parent"
-  );
+  const parentQueues = useMemo(() => {
+    if (
+      profile?.parentQueueId &&
+      !queues.some((queue) => queue.id === profile.parentQueueId)
+    ) {
+      return [
+        {
+          id: profile.parentQueueId,
+          routerId: profile.routerId,
+          name: profile.parentQueueName || profile.parentQueueId,
+          kind: "parent" as const,
+        },
+        ...queues,
+      ];
+    }
+
+    return queues;
+  }, [profile, queues]);
+
   const selectedRouter = routers.find((item) => item.id === form.routerId);
   const selectedPool = ipPools.find((pool) => pool.id === form.ipPoolId);
-  const selectedParentQueue = routerQueues.find(
+  const selectedParentQueue = parentQueues.find(
     (queue) => queue.id === form.parentQueueId
   );
 
@@ -158,8 +256,8 @@ export function usePlanProfileWizard(profileId?: string) {
     key: K,
     value: PlanProfileWizardForm[K]
   ) {
-    setForm((current) => {
-      const next: PlanProfileWizardForm = { ...current };
+    setFormOverride((current) => {
+      const next: PlanProfileWizardForm = { ...(current ?? baselineForm) };
       next[key] = value;
 
       if (key === "routerId") {
@@ -167,13 +265,9 @@ export function usePlanProfileWizard(profileId?: string) {
           (pool) => pool.routerId === String(value)
         );
         const nextPool = routerPools[0];
-        const nextParentQueue = routerQueues.find(
-          (queue) =>
-            queue.routerId === String(value) && queue.kind === "parent"
-        );
         next.poolMode = nextPool ? "existing" : "new";
         next.ipPoolId = nextPool?.id ?? "";
-        next.parentQueueId = nextParentQueue?.id ?? "";
+        next.parentQueueId = "";
         next.newPoolName = "";
         next.newPoolStart = "";
         next.newPoolEnd = "";
@@ -207,9 +301,6 @@ export function usePlanProfileWizard(profileId?: string) {
     if (currentStep === 2) {
       if (!form.routerId) {
         return "Pilih router target.";
-      }
-      if (!form.parentQueueId) {
-        return "Pilih parent queue dari router.";
       }
       if (form.type !== "other" && !isValidIpv4(form.localAddress)) {
         return "Local address tidak valid.";
@@ -270,7 +361,7 @@ export function usePlanProfileWizard(profileId?: string) {
     setStep((current) => Math.max(1, current - 1));
   }
 
-  function save() {
+  async function save() {
     for (const currentStep of [1, 2, 3]) {
       const message = validate(currentStep);
       if (message) {
@@ -290,6 +381,7 @@ export function usePlanProfileWizard(profileId?: string) {
       isActive: form.isActive,
       routerId: form.routerId,
       parentQueueId: form.parentQueueId,
+      parentQueueName: selectedParentQueue?.name ?? "",
       ipPoolId:
         form.type !== "other" && form.poolMode === "existing"
           ? form.ipPoolId
@@ -308,29 +400,43 @@ export function usePlanProfileWizard(profileId?: string) {
       uploadMbps: Number(form.uploadMbps),
       oversubscription: form.oversubscription,
       oversubRatio: preview.ratio,
-      cirDownloadMbps: preview.cirDownloadMbps,
-      cirUploadMbps: preview.cirUploadMbps,
-      mirDownloadMbps: preview.mirDownloadMbps,
-      mirUploadMbps: preview.mirUploadMbps,
-      burstDownloadMbps: preview.burstDownloadMbps,
-      burstUploadMbps: preview.burstUploadMbps,
-      rateLimit: preview.rateLimit,
     };
 
-    if (profile) {
-      updateProfile(profile.id, payload);
-      toast.success("Paket diperbarui.");
-    } else {
-      addProfile(payload);
-      toast.success("Paket dibuat.");
-    }
+    setIsSaving(true);
 
-    router.push("/dashboard/paket");
+    try {
+      const result = profile
+        ? await updateProfile(profile.id, payload)
+        : await addProfile(payload);
+
+      if (result.routerSync && !result.routerSync.success) {
+        toast.warning(
+          `Paket tersimpan, tetapi sinkron ke router gagal: ${result.routerSync.message}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success(
+          result.routerSync?.message ??
+            (profile ? "Paket diperbarui." : "Paket dibuat.")
+        );
+      }
+
+      router.push("/dashboard/paket");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Gagal menyimpan paket.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return {
     profile,
     isEditing: Boolean(profile),
+    isInitializing,
+    isSaving,
     step,
     form,
     set,
@@ -338,6 +444,8 @@ export function usePlanProfileWizard(profileId?: string) {
     routers,
     pools,
     parentQueues,
+    queuesLoading,
+    queuesMessage,
     router: selectedRouter,
     selectedPool,
     selectedParentQueue,
