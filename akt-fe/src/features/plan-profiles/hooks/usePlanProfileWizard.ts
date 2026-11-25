@@ -400,6 +400,13 @@ export function usePlanProfileWizard(profileId?: string) {
       uploadMbps: Number(form.uploadMbps),
       oversubscription: form.oversubscription,
       oversubRatio: preview.ratio,
+      cirDownloadMbps: preview.cirDownloadMbps,
+      cirUploadMbps: preview.cirUploadMbps,
+      mirDownloadMbps: preview.mirDownloadMbps,
+      mirUploadMbps: preview.mirUploadMbps,
+      burstDownloadMbps: preview.burstDownloadMbps,
+      burstUploadMbps: preview.burstUploadMbps,
+      rateLimit: preview.rateLimit,
     };
 
     setIsSaving(true);

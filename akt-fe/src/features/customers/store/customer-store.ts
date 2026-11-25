@@ -543,7 +543,7 @@ export const useCustomerStore = create<CustomerState>()(
           statusHistory: [],
           accounts: [],
           drafts: [],
-        }) as CustomerState,
+        }) as unknown as CustomerState,
     }
   )
 );

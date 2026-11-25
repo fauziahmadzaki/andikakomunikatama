@@ -150,7 +150,8 @@ export const usePlanProfileStore = create<PlanProfileState>()(
       name: "muranet-plan-profiles",
       skipHydration: true,
       version: 4,
-      migrate: () => ({ profiles: [], ipPools: [] }) as PlanProfileState,
+      migrate: () =>
+        ({ profiles: [], ipPools: [] }) as unknown as PlanProfileState,
     }
   )
 );
