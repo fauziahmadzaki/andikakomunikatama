@@ -2,6 +2,9 @@ FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
+ARG NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY package*.json ./
 RUN npm ci --prefer-offline --no-audit
 
